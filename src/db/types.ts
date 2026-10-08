@@ -1,0 +1,84 @@
+/** 0/1 вместо boolean: IndexedDB не умеет индексировать boolean. */
+export type Flag = 0 | 1
+
+/** Служебные поля каждой синхронизируемой записи. */
+export interface SyncMeta {
+  id: string
+  /** Время последнего изменения на устройстве, мс. При конфликте побеждает большее. */
+  updatedAt: number
+  /** Удаление = пометка, чтобы оно доехало до других устройств. */
+  deleted: Flag
+  /** 1 — изменение ещё не отправлено в облако. */
+  dirty: Flag
+}
+
+/** Раздел мест: еда, места и развлечения, шопинг, отели. */
+export type SectionId = 'food' | 'fun' | 'shop' | 'hotel'
+
+export type PlaceStatus = 'want' | 'been'
+
+/** Фото места в хранилище jp-photos: большое и миниатюра для карточек. */
+export interface Photo {
+  path: string
+  thumb: string
+  w: number
+  h: number
+}
+
+export interface Place extends SyncMeta {
+  section: SectionId
+  categoryIds: string[]
+  /** Город: «Токио», «Осака»… Свободный текст, фильтр строится по тому, что есть. */
+  city: string
+  name: string
+  /** Название по-японски — показать таксисту или персоналу. */
+  nameJa: string
+  /** Ближайшая станция. */
+  station: string
+  stationJa: string
+  /** Номер станции с указателей: «G01», «JY20», «M16». По нему рисуется значок в цвете линии. У старых записей поля нет. */
+  stationCode?: string
+  address: string
+  hours: string
+  /** 0 — не указано, 1–4 — от ¥ до ¥¥¥¥. */
+  price: number
+  mapsUrl: string
+  /** Откуда узнал: рилсы, посты, статьи. */
+  sourceUrls: string[]
+  photo: Photo | null
+  note: string
+  status: PlaceStatus
+  favorite: boolean
+  createdAt: number
+}
+
+/** Категория внутри раздела (Рамен, Якинику…). Список редактируется. */
+export interface Category extends SyncMeta {
+  section: SectionId
+  name: string
+  emoji: string
+  order: number
+}
+
+export type GuideTopic = 'transport' | 'money' | 'connection' | 'documents' | 'etiquette' | 'other'
+
+/** Статья-гайд: проездные, деньги, связь… Текст — простой markdown. */
+export interface Guide extends SyncMeta {
+  topic: GuideTopic
+  title: string
+  body: string
+  order: number
+}
+
+/** «Входящие»: ссылка или заметка, которую разберут потом (сам владелец или Claude). */
+export interface InboxItem extends SyncMeta {
+  text: string
+  createdAt: number
+  /** Когда разобрано; null — ещё ждёт. */
+  doneAt: number | null
+}
+
+export interface MetaRow {
+  key: string
+  value: unknown
+}

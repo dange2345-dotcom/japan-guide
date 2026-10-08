@@ -1,0 +1,12 @@
+node_modules
+dist
+dev-dist
+*.local
+.env
+.DS_Store
+dist-demo
+private/
+.impeccable/review/
+.impeccable/questions/
+.impeccable/answer.txt
+.impeccable/direction-payload.json

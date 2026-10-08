@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T22:06:38.842Z",
+  "title": "Design System: Япония",
+  "extensions": {
+    "colorMeta": {
+      "exit-yellow": {
+        "role": "primary",
+        "displayName": "Exit Yellow",
+        "canonical": "#ffd400",
+        "tonalRamp": [
+          "oklch(15% 0.17 95)",
+          "oklch(25% 0.17 95)",
+          "oklch(35% 0.17 95)",
+          "oklch(45% 0.17 95)",
+          "oklch(60% 0.17 95)",
+          "oklch(72% 0.17 95)",
+          "oklch(85% 0.17 95)",
+          "oklch(95% 0.17 95)"
+        ]
+      },
+      "metro-navy": {
+        "role": "neutral",
+        "displayName": "Metro Navy",
+        "canonical": "#1a1f36",
+        "tonalRamp": [
+          "oklch(15% 0.05 275)",
+          "oklch(25% 0.05 275)",
+          "oklch(35% 0.05 275)",
+          "oklch(45% 0.05 275)",
+          "oklch(60% 0.05 275)",
+          "oklch(72% 0.05 275)",
+          "oklch(85% 0.05 275)",
+          "oklch(95% 0.05 275)"
+        ]
+      },
+      "station-wall": {
+        "role": "neutral",
+        "displayName": "Station Wall",
+        "canonical": "#eceef1",
+        "tonalRamp": [
+          "oklch(15% 0.01 260)",
+          "oklch(25% 0.01 260)",
+          "oklch(35% 0.01 260)",
+          "oklch(45% 0.01 260)",
+          "oklch(60% 0.01 260)",
+          "oklch(72% 0.01 260)",
+          "oklch(85% 0.01 260)",
+          "oklch(95% 0.01 260)"
+        ]
+      },
+      "line-food-ginza": {
+        "role": "secondary",
+        "displayName": "Ginza Orange",
+        "canonical": "#f39700",
+        "tonalRamp": [
+          "oklch(15% 0.16 65)",
+          "oklch(25% 0.16 65)",
+          "oklch(35% 0.16 65)",
+          "oklch(45% 0.16 65)",
+          "oklch(60% 0.16 65)",
+          "oklch(72% 0.16 65)",
+          "oklch(85% 0.16 65)",
+          "oklch(95% 0.16 65)"
+        ]
+      },
+      "line-places-marunouchi": {
+        "role": "secondary",
+        "displayName": "Marunouchi Red",
+        "canonical": "#e60012",
+        "tonalRamp": [
+          "oklch(15% 0.2 28)",
+          "oklch(25% 0.2 28)",
+          "oklch(35% 0.2 28)",
+          "oklch(45% 0.2 28)",
+          "oklch(60% 0.2 28)",
+          "oklch(72% 0.2 28)",
+          "oklch(85% 0.2 28)",
+          "oklch(95% 0.2 28)"
+        ]
+      },
+      "line-shopping-hanzomon": {
+        "role": "secondary",
+        "displayName": "Hanzomon Purple",
+        "canonical": "#9b7cb6",
+        "tonalRamp": [
+          "oklch(15% 0.09 305)",
+          "oklch(25% 0.09 305)",
+          "oklch(35% 0.09 305)",
+          "oklch(45% 0.09 305)",
+          "oklch(60% 0.09 305)",
+          "oklch(72% 0.09 305)",
+          "oklch(85% 0.09 305)",
+          "oklch(95% 0.09 305)"
+        ]
+      },
+      "line-hotels-chiyoda": {
+        "role": "secondary",
+        "displayName": "Chiyoda Green",
+        "canonical": "#009944",
+        "tonalRamp": [
+          "oklch(15% 0.14 150)",
+          "oklch(25% 0.14 150)",
+          "oklch(35% 0.14 150)",
+          "oklch(45% 0.14 150)",
+          "oklch(60% 0.14 150)",
+          "oklch(72% 0.14 150)",
+          "oklch(85% 0.14 150)",
+          "oklch(95% 0.14 150)"
+        ]
+      },
+      "line-guides-tozai": {
+        "role": "secondary",
+        "displayName": "Tozai Sky",
+        "canonical": "#00a7db",
+        "tonalRamp": [
+          "oklch(15% 0.13 225)",
+          "oklch(25% 0.13 225)",
+          "oklch(35% 0.13 225)",
+          "oklch(45% 0.13 225)",
+          "oklch(60% 0.13 225)",
+          "oklch(72% 0.13 225)",
+          "oklch(85% 0.13 225)",
+          "oklch(95% 0.13 225)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Section names on the platform sign, place names on the board."
+      },
+      "japanese": {
+        "displayName": "Japanese",
+        "purpose": "Every lang=\"ja\" text: place and station names, readings."
+      }
+    },
+    "shadows": [
+      {
+        "name": "board",
+        "value": "0 1px 2px rgb(26 31 54 / 0.06), 0 8px 22px rgb(26 31 54 / 0.07)",
+        "purpose": "Boards and cards at rest."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 2px 4px rgb(26 31 54 / 0.08), 0 14px 30px rgb(26 31 54 / 0.12)",
+        "purpose": "Card lift on pointer hover."
+      },
+      {
+        "name": "line-band",
+        "value": "inset 0 -7px 0 var(--line)",
+        "purpose": "Line-colour band at the bottom of a rounded sign board."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All state transitions."
+      },
+      {
+        "name": "rise",
+        "value": "360ms from opacity 0.35 / translateY 8px, 25ms stagger",
+        "purpose": "Card grid after a filter change: the one authored moment."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "grid",
+        "value": "600px"
+      },
+      {
+        "name": "rail",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Exit Button",
+      "kind": "button",
+      "refersTo": "button-exit",
+      "description": "The one primary action per screen, styled as the yellow exit sign.",
+      "html": "<a class=\"ds-btn-exit\" href=\"#\">Открыть в Google Maps <span>↗</span></a>",
+      "css": ".ds-btn-exit{display:inline-flex;align-items:center;gap:10px;min-height:54px;padding:0 18px;border-radius:8px;background:#ffd400;color:#1a1f36;font:700 17px \"Fira Sans\",system-ui,sans-serif;text-decoration:none;transition:background .15s}.ds-btn-exit span{margin-left:auto;font-size:20px}.ds-btn-exit:hover{background:#f2c600}.ds-btn-exit:focus-visible{outline:2.5px solid #1a1f36;outline-offset:2px}"
+    },
+    {
+      "name": "Category Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Category filter on the rail; selected is a navy plate with the line bar.",
+      "html": "<button class=\"ds-chip\">Рамен <span>2</span></button><button class=\"ds-chip ds-chip--on\" style=\"--line:#f39700\">Все</button>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px;margin-right:8px;border:1.5px solid #b8bdca;border-radius:8px;background:#fff;color:#1a1f36;font:500 15px \"Fira Sans\",system-ui,sans-serif;cursor:pointer}.ds-chip span{color:#636981;font-size:12.5px}.ds-chip:hover{border-color:#474d65}.ds-chip:focus-visible{outline:2.5px solid #1a1f36;outline-offset:2px}.ds-chip--on{background:#1a1f36;border-color:#1a1f36;color:#fff;box-shadow:inset 0 -4px 0 var(--line);font-weight:600}"
+    },
+    {
+      "name": "Station Badge",
+      "kind": "custom",
+      "description": "Station number in the official line colour (circle for metro, rounded square for JR).",
+      "html": "<span class=\"ds-st\" style=\"--line:#f39700\"><b>G</b><i>01</i></span> <span class=\"ds-st ds-st--jr\" style=\"--line:#80c241\"><b>JY</b><i>20</i></span>",
+      "css": ".ds-st{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:34px;border:3px solid var(--line);border-radius:50%;background:#fff;color:#1a1f36;font:800 11.5px/0.95 \"Fira Sans\",system-ui,sans-serif;vertical-align:middle}.ds-st i{font-style:normal;font-weight:700}.ds-st--jr{width:38px;border-radius:5px}"
+    },
+    {
+      "name": "Station Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A place as a station: photo, line band, name, station badge.",
+      "html": "<a class=\"ds-card\" href=\"#\" style=\"--line:#f39700\"><div class=\"ds-card__ph\">食</div><div class=\"ds-card__b\"><strong>Ичиран Сибуя</strong><small>G01 · Сибуя</small></div></a>",
+      "css": ".ds-card{display:flex;flex-direction:column;width:180px;overflow:hidden;border:1px solid #dadde4;border-radius:10px;background:#fff;color:#1a1f36;text-decoration:none;font-family:\"Fira Sans\",system-ui,sans-serif;box-shadow:0 1px 2px rgb(26 31 54/.06),0 8px 22px rgb(26 31 54/.07);transition:transform .16s}.ds-card:hover{transform:translateY(-2px)}.ds-card:focus-visible{outline:2.5px solid #1a1f36;outline-offset:2px}.ds-card__ph{display:grid;place-items:center;aspect-ratio:4/3;background:#fdf3e5;color:#a8661a;font-size:46px}.ds-card__b{display:flex;flex-direction:column;gap:5px;padding:10px 11px;border-top:4px solid var(--line)}.ds-card__b small{color:#636981}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form field with the yellow focus halo.",
+      "html": "<input class=\"ds-input\" placeholder=\"Название\">",
+      "css": ".ds-input{min-height:46px;padding:0 12px;border:1.5px solid #b8bdca;border-radius:8px;background:#fff;color:#1a1f36;font:16px \"Fira Sans\",system-ui,sans-serif}.ds-input:focus-visible{outline:none;border-color:#1a1f36;box-shadow:0 0 0 3px rgb(255 212 0 / .75)}"
+    },
+    {
+      "name": "Line Navigation",
+      "kind": "nav",
+      "description": "Section line badges threaded on one track.",
+      "html": "<nav class=\"ds-lines\"><a class=\"ds-lb ds-lb--on\" href=\"#\" style=\"--line:#f39700\">食</a><a class=\"ds-lb\" href=\"#\" style=\"--line:#e60012\">遊</a><a class=\"ds-lb\" href=\"#\" style=\"--line:#9b7cb6\">買</a></nav>",
+      "css": ".ds-lines{display:flex;gap:28px;padding:8px;background:linear-gradient(#b8bdca,#b8bdca) center/100% 3px no-repeat}.ds-lb{display:grid;place-items:center;width:34px;height:34px;border:3px solid var(--line);border-radius:50%;background:#fff;color:#1a1f36;text-decoration:none;font:700 16px \"Hiragino Sans\",\"Yu Gothic UI\",sans-serif;transition:background .2s}.ds-lb:hover{background:#f5f6f8}.ds-lb--on,.ds-lb--on:hover{background:var(--line);color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Station Signboard",
+    "overview": "The guide reads like Tokyo station wayfinding: sections are metro lines with kanji ring badges, places are stations with real line-coloured station numbers, and exit yellow marks the way out. Flat white boards on a cool grey wall, moderate density, readable one-handed in daylight.",
+    "keyCharacteristics": [
+      "Platform-sign headers with a full-width line strip",
+      "Station cards with a line band and station badge",
+      "Exit yellow for one primary action",
+      "Japanese set large in a Japanese gothic",
+      "Flat white boards on a cool grey wall"
+    ],
+    "rules": [
+      {
+        "name": "The Exit Rule",
+        "body": "Exit Yellow marks the way out and nothing else: one yellow action per screen, plus favourites and counts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Line Rule",
+        "body": "Line colour appears only as rings, strips, bands and badges; text never sits on it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Prices, counts, times and positions use tabular numerals.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do keep exactly one Exit Yellow action per screen.",
+      "Do show line colour only as rings, strips and badges.",
+      "Do mark Japanese text with lang=\"ja\"."
+    ],
+    "donts": [
+      "Don't fill large areas with line colours.",
+      "Don't use big rounded photo cards with a blue accent.",
+      "Don't draw thick coloured side borders on cards.",
+      "Don't use flag emoji."
+    ]
+  }
+}
