@@ -43,6 +43,19 @@ const PLACES: Place[] = [
     sourceUrls: ['https://www.instagram.com/reel/demo'],
     favorite: true,
   }),
+  place('demo-chain', {
+    section: 'food',
+    name: 'Гюдон-сеть',
+    nameJa: '牛丼チェーン',
+    categoryIds: ['cat-food-street'],
+    city: 'Токио',
+    note: 'Сеть: одна карточка, точки — внутри. Демо-запись.',
+    branches: [
+      { name: 'Shibuya Center-gai', nameJa: '牛丼チェーン 渋谷センター街店', city: 'Токио', station: 'Сибуя', stationJa: '渋谷', stationCode: 'JY20', address: '東京都渋谷区宇田川町25-5', hours: 'круглосуточно', mapsUrl: '' },
+      { name: '', nameJa: '牛丼チェーン 新宿東口店', city: 'Токио', station: 'Синдзюку', stationJa: '新宿', stationCode: 'JY17', address: '東京都新宿区新宿3-24-1', hours: 'ежедневно 7:00–23:00', mapsUrl: '' },
+      { name: 'Namba', nameJa: '牛丼チェーン なんば店', city: 'Осака', station: 'Намба', stationJa: '難波', stationCode: 'M20', address: '大阪府大阪市中央区難波1-1-1', hours: '', mapsUrl: '' },
+    ],
+  }),
   place('demo-tonkatsu', {
     section: 'food',
     name: 'Тонкацу в Араки-тё', stationCode: 'M11',

@@ -1,4 +1,4 @@
-import type { Category, CategoryGroup, Place, SectionId } from '../db/types'
+import type { Branch, Category, CategoryGroup, Place, SectionId } from '../db/types'
 
 // Фильтр, поиск, сортировка и проверка дублей. Общие для приложения и scripts/japan.ts.
 
@@ -19,9 +19,19 @@ export function normalize(text: string): string {
   return text.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
 }
 
+/** Города места: свой и городов его точек (сеть может быть и в Токио, и в Осаке). */
+export function placeCities(place: Pick<Place, 'city' | 'branches'>): string[] {
+  const seen = new Map<string, string>()
+  for (const city of [place.city, ...(place.branches ?? []).map((b) => b.city)]) {
+    const key = normalize(city)
+    if (key && !seen.has(key)) seen.set(key, city.trim())
+  }
+  return [...seen.values()]
+}
+
 export function matchesFilter(place: Place, filter: PlaceFilter): boolean {
   if (filter.category && !place.categoryIds.includes(filter.category)) return false
-  if (filter.city && normalize(place.city) !== normalize(filter.city)) return false
+  if (filter.city && !placeCities(place).some((city) => normalize(city) === normalize(filter.city!))) return false
   if (filter.status === 'want' && place.status !== 'want') return false
   if (filter.status === 'been' && place.status !== 'been') return false
   if (filter.status === 'fav' && !place.favorite) return false
@@ -39,15 +49,16 @@ export function filterPlaces(places: Place[], section: SectionId, filter: PlaceF
   return places.filter((p) => p.section === section && matchesFilter(p, filter)).sort(comparePlaces)
 }
 
-/** Поиск по всем разделам: название (рус. и яп.), станция, город, адрес, заметка. */
+/** Поиск по всем разделам: название (рус. и яп.), станция, город, адрес, заметка — и станции, адреса точек сети. */
 export function searchPlaces(places: Place[], query: string, categories: Category[] = []): Place[] {
   const words = normalize(query).split(' ').filter(Boolean)
   if (words.length === 0) return []
   const categoryName = new Map(categories.map((c) => [c.id, c.name]))
   return places
     .filter((p) => {
+      const branches = (p.branches ?? []).flatMap((b) => [b.name ?? '', b.nameJa, b.station, b.stationJa, b.city, b.address])
       const haystack = normalize(
-        [p.name, p.nameJa, p.station, p.stationJa, p.city, p.address, p.note, ...p.categoryIds.map((id) => categoryName.get(id) ?? '')].join(' '),
+        [p.name, p.nameJa, p.station, p.stationJa, p.city, p.address, p.note, ...branches, ...p.categoryIds.map((id) => categoryName.get(id) ?? '')].join(' '),
       )
       return words.every((word) => haystack.includes(word))
     })
@@ -59,11 +70,12 @@ export function citiesOf(places: Place[], section?: SectionId): string[] {
   const counts = new Map<string, { name: string; n: number }>()
   for (const p of places) {
     if (section && p.section !== section) continue
-    const key = normalize(p.city)
-    if (!key) continue
-    const entry = counts.get(key) ?? { name: p.city.trim(), n: 0 }
-    entry.n++
-    counts.set(key, entry)
+    for (const city of placeCities(p)) {
+      const key = normalize(city)
+      const entry = counts.get(key) ?? { name: city, n: 0 }
+      entry.n++
+      counts.set(key, entry)
+    }
   }
   return [...counts.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ru')).map((e) => e.name)
 }
@@ -91,6 +103,9 @@ const KEEP_PARAMS = ['q', 'query', 'query_place_id', 'place_id', 'cid', 'ftid']
 export function normalizeMapsUrl(url: string): string {
   const trimmed = url.trim()
   if (!trimmed) return ''
+  // У филиалов сети в ссылке одно название («/place/Gyu-Kaku/…»), различает их только id места в data=…!1s0x…:0x…
+  const featureId = /!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i.exec(trimmed)?.[1]
+  if (featureId) return `maps-place:${featureId.toLowerCase()}`
   try {
     const u = new URL(trimmed)
     const host = u.hostname.replace(/^www\./, '').toLowerCase()
@@ -112,23 +127,31 @@ export interface DuplicateProbe {
   name: string
   city: string
   mapsUrl: string
+  branches?: Pick<Branch, 'mapsUrl'>[]
 }
 
-/** Уже есть такое место? Совпала ссылка Maps — или раздел и название, а города совпадают либо где-то не указаны. */
+/** Ссылки места и всех его точек — для сравнения. */
+function mapsUrlsOf(p: Pick<DuplicateProbe, 'mapsUrl' | 'branches'>): string[] {
+  return [p.mapsUrl, ...(p.branches ?? []).map((b) => b.mapsUrl)].map(normalizeMapsUrl).filter(Boolean)
+}
+
+/** Уже есть такое место? Совпала ссылка Maps (в том числе у точки сети) — или раздел и название, а города совпадают либо где-то не указаны. */
 export function findDuplicate<T extends DuplicateProbe>(existing: T[], probe: DuplicateProbe): T | undefined {
-  const url = normalizeMapsUrl(probe.mapsUrl)
+  const urls = mapsUrlsOf(probe)
   const name = normalize(probe.name)
   const city = normalize(probe.city)
   return existing.find((p) => {
-    if (url && normalizeMapsUrl(p.mapsUrl) === url) return true
+    if (urls.length && mapsUrlsOf(p).some((u) => urls.includes(u))) return true
     if (p.section !== probe.section || normalize(p.name) !== name) return false
     const otherCity = normalize(p.city)
     return !city || !otherCity || city === otherCity
   })
 }
 
-/** Ссылка «открыть в Google Maps»: своя, если есть, иначе поиск по японскому названию (или русскому) и городу. */
-export function mapsLink(place: Pick<Place, 'mapsUrl' | 'name' | 'nameJa' | 'city' | 'address'>): string {
+/** Ссылка «открыть в Google Maps»: своя, если есть, иначе поиск по японскому названию (или русскому) и городу.
+ *  У сети — поиск по названию сети: Карты сами покажут ближайшие точки. */
+export function mapsLink(place: Pick<Place, 'mapsUrl' | 'name' | 'nameJa' | 'city' | 'address' | 'branches'>): string {
+  if (place.branches?.length) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.nameJa || place.name)}`
   if (place.mapsUrl.trim()) return place.mapsUrl.trim()
   const query = [place.nameJa || place.name, place.address || place.city].filter(Boolean).join(' ')
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`

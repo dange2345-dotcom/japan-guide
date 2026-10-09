@@ -6,7 +6,7 @@ import { normalize, searchPlaces } from '../domain/places'
 import { plainExcerpt } from '../domain/markdown'
 import { buildHash, navigate } from '../lib/hooks'
 import { IconChevronRight } from '../ui/icons'
-import { PageHead, PlacePhoto, StationBadge } from './parts'
+import { PageHead, PlacePhoto, StationSummary, hasStation } from './parts'
 
 /** #/search?q=… — по всем разделам и гайдам. */
 export function SearchScreen({ params }: { params: URLSearchParams }) {
@@ -59,10 +59,9 @@ export function SearchScreen({ params }: { params: URLSearchParams }) {
                       {p.categoryIds.length > 0 && ` · ${p.categoryIds.map((id) => byId.get(id)?.name).filter(Boolean).join(', ')}`}
                       {p.city && ` · ${p.city}`}
                     </span>
-                    {(p.station || p.stationCode) && (
+                    {hasStation(p) && (
                       <span class="result__station">
-                        <StationBadge code={p.stationCode} city={p.city} />
-                        {p.station}
+                        <StationSummary place={p} />
                       </span>
                     )}
                   </span>

@@ -41,7 +41,7 @@ import { resolve } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import { PHOTO_BUCKET, SUPABASE_URL } from '../src/config'
-import type { Category, CategoryGroup, Guide, GuideTopic, InboxItem, Item, ItemStatus, Photo, Place, PlaceStatus, SectionId, SyncMeta } from '../src/db/types'
+import type { Branch, Category, CategoryGroup, Guide, GuideTopic, InboxItem, Item, ItemStatus, Photo, Place, PlaceStatus, SectionId, SyncMeta } from '../src/db/types'
 import {
   DEFAULT_CATEGORIES,
   GUIDE_TOPICS,
@@ -233,6 +233,8 @@ type PlaceInput = {
   photo?: string
   status?: string
   fav?: boolean
+  /** Точки сети (только в import): у каждой своя станция, адрес, часы и ссылка. */
+  branches?: Partial<Branch>[]
 }
 
 function list(value: string | string[] | undefined): string[] {
@@ -308,6 +310,19 @@ function applyInput(place: Place, input: PlaceInput, categoryIds?: string[]): Pl
   const status = parseStatus(input.status)
   if (status) next.status = status
   if (input.fav !== undefined) next.favorite = input.fav
+  if (input.branches !== undefined) {
+    next.branches = input.branches.map((b) => ({
+      name: b.name?.trim() ?? '',
+      nameJa: b.nameJa?.trim() ?? '',
+      city: b.city?.trim() ?? '',
+      station: b.station?.trim() ?? '',
+      stationJa: b.stationJa?.trim() ?? '',
+      stationCode: b.stationCode?.trim() ? normalizeStationCode(b.stationCode) : '',
+      address: b.address?.trim() ?? '',
+      hours: b.hours?.trim() ?? '',
+      mapsUrl: b.mapsUrl?.trim() ?? '',
+    }))
+  }
   return next
 }
 
@@ -321,7 +336,12 @@ function placeLine(p: Place, categories: Map<string, Category>): string {
     p.id.slice(0, 8),
     p.name + (p.nameJa ? ` (${p.nameJa})` : ''),
     cats && `· ${cats}`,
-    [p.station && `🚉 ${[p.stationCode, p.station].filter(Boolean).join(' ')}`, p.city].filter(Boolean).join(', '),
+    [
+      p.branches?.length ? `🚉 ${p.branches.length} точ.: ${p.branches.map((b) => b.station).join(', ')}` : p.station && `🚉 ${[p.stationCode, p.station].filter(Boolean).join(' ')}`,
+      p.city,
+    ]
+      .filter(Boolean)
+      .join(', '),
     p.price ? PRICE_LABELS[p.price] : '',
     p.photo ? '📷' : '',
   ]
@@ -347,6 +367,13 @@ function printPlace(p: Place, categories: Map<string, Category>) {
     ['Заметка', p.note],
   ]
   for (const [label, value] of lines) if (value) console.log(`${label.padEnd(11)}  ${value}`)
+  if (p.branches?.length) {
+    console.log(`Точки (${p.branches.length}):`)
+    for (const b of p.branches) {
+      console.log(`  🚉 ${[b.stationCode, b.station, b.stationJa].filter(Boolean).join(' / ')}${b.city ? `, ${b.city}` : ''}  ${b.nameJa}`)
+      for (const extra of [b.address, b.hours, b.mapsUrl]) if (extra) console.log(`     ${extra}`)
+    }
+  }
 }
 
 /* ---------- товары («Что купить») ---------- */
@@ -612,7 +639,9 @@ switch (command) {
         problems.push(`${label}: нет названия`)
         continue
       }
-      const probe = { section: input.section, name: input.name, city: input.city ?? '', mapsUrl: input.maps ?? '' }
+      // Ссылки точек сети тоже сравниваются: точка уже есть отдельным местом или в другой сети — дубль.
+      const branches = applyInput(blankPlace(input.section) as Place, { branches: input.branches ?? [] }).branches
+      const probe = { section: input.section, name: input.name, city: input.city ?? '', mapsUrl: input.maps ?? '', branches }
       const dup = findDuplicate(known, probe)
       if (dup) {
         skipped.push(`${input.name} — уже есть «${dup.name}»`)
@@ -654,7 +683,8 @@ switch (command) {
       console.log(`\n${section.emoji} ${section.title} — ${inSection.length}`)
       for (const { input, ids, missing } of inSection) {
         const cats = [...ids.map((id) => categories.find((c) => c.id === id)!.name), ...missing.map((m) => `${m}*`)].join(', ')
-        console.log(`  + ${input.name}${input.city ? ` · ${input.city}` : ''}${input.station ? ` · 🚉 ${input.station}` : ''}${cats ? ` · ${cats}` : ''}${input.photo ? ' · 📷' : ''}`)
+        const where = input.branches?.length ? ` · 🚉 ${input.branches.length} точ.: ${input.branches.map((b) => b.station).join(', ')}` : input.station ? ` · 🚉 ${input.station}` : ''
+        console.log(`  + ${input.name}${input.city ? ` · ${input.city}` : ''}${where}${cats ? ` · ${cats}` : ''}${input.photo ? ' · 📷' : ''}`)
       }
     }
     if (itemPlan.length) {

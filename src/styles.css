@@ -1427,6 +1427,123 @@ a {
   gap: 6px;
 }
 
+/* ===== Точки сети: схема линии — значки станций на полосе цвета раздела ===== */
+.branches {
+  margin: 0 0 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--board);
+}
+
+.branches__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px 0;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.branches__count {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.branches__list {
+  margin: 0;
+  padding: 2px 14px 4px;
+  list-style: none;
+}
+
+.branch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.branch + .branch {
+  border-top: 1px solid var(--rule);
+}
+
+.branch::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 17px;
+  width: 4px;
+  background: var(--line);
+}
+
+.branch:first-child::before {
+  top: 29px;
+}
+
+.branch:last-child::before {
+  bottom: calc(100% - 29px);
+}
+
+.branch:only-child::before {
+  display: none;
+}
+
+.branch > .st-badge {
+  position: relative;
+  justify-self: center;
+}
+
+.branch__station {
+  margin: 6px 0 0;
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.branch__city {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.branch__label {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.branch__address {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.branch__hours {
+  margin: 2px 0 0;
+  color: var(--ink-3);
+  font-size: 13.5px;
+}
+
+.branch__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.badge-stack {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.badge-stack .st-badge + .st-badge {
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px var(--board);
+}
+
 .rows__links a {
   display: inline-flex;
   align-items: center;
@@ -2755,4 +2872,44 @@ a {
     animation-delay: 0ms !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ===== Точки сети в форме ===== */
+.branch-edit {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--board);
+  list-style: none;
+}
+
+.branch-edit__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 12px;
+}
+
+.branch-edit__item + .branch-edit__item {
+  border-top: 1px solid var(--rule);
+}
+
+.branch-edit__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.branch-edit__station {
+  font-weight: 600;
+}
+
+.branch-edit__address {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

@@ -11,8 +11,10 @@ import {
   filterPlaces,
   findDuplicate,
   mapsLink,
+  matchesFilter,
   NO_FILTER,
   normalizeMapsUrl,
+  placeCities,
   searchPlaces,
 } from './places'
 
@@ -80,6 +82,29 @@ describe('ссылки Google Maps и дубли', () => {
     expect(normalizeMapsUrl(a)).toBe(normalizeMapsUrl(b))
     expect(normalizeMapsUrl('https://maps.google.com/?cid=123&hl=ru')).toBe('maps.google.com?cid=123')
     expect(normalizeMapsUrl('https://maps.app.goo.gl/AbC/')).toBe('maps.app.goo.gl/abc')
+  })
+
+  it('сеть: города, поиск, дубли и ссылка — по её точкам', () => {
+    const branch = (city: string, station: string, mapsUrl: string) => ({ nameJa: '', city, station, stationJa: '', address: '', hours: '', mapsUrl })
+    const kaku = place({
+      name: 'Gyu-Kaku',
+      nameJa: '牛角',
+      city: 'Токио',
+      branches: [branch('Токио', 'Асакуса', 'https://www.google.com/maps/place/Gyu-Kaku/data=!4m2!3m1!1s0x1:0xa'), branch('Осака', 'Намба', 'https://www.google.com/maps/place/Gyu-Kaku/data=!4m2!3m1!1s0x2:0xb')],
+    })
+    expect(placeCities(kaku)).toEqual(['Токио', 'Осака'])
+    expect(matchesFilter(kaku, { category: null, city: 'осака', status: 'all' })).toBe(true)
+    expect(citiesOf([kaku, gyukatsu])).toEqual(['Осака', 'Токио'])
+    expect(searchPlaces([kaku, ichiran], 'намба')).toEqual([kaku])
+    expect(findDuplicate([kaku], { section: 'food', name: 'Другое', city: '', mapsUrl: 'https://www.google.com/maps/place/X/data=!1s0x2:0xb' })).toBe(kaku)
+    expect(mapsLink(kaku)).toBe(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('牛角')}`)
+  })
+
+  it('филиалы сети с одинаковым названием в ссылке различаются по id места', () => {
+    const asakusa = 'https://www.google.com/maps/place/Gyu-Kaku/data=!4m2!3m1!1s0x60188ebfa1ad5dbf:0xc9bc2a510e6d10c'
+    const shinjuku = 'https://www.google.com/maps/place/Gyu-Kaku/data=!4m2!3m1!1s0x60188cd989955ad9:0x159282721fdad5b2'
+    expect(normalizeMapsUrl(asakusa)).not.toBe(normalizeMapsUrl(shinjuku))
+    expect(normalizeMapsUrl(asakusa)).toBe(normalizeMapsUrl(`${asakusa.replace('/data', '/@35.71,139.79,17z/data')}?entry=ttu`))
   })
 
   it('дубль: та же ссылка — или то же название в том же разделе и городе', () => {

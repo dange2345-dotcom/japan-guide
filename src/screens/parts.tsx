@@ -6,6 +6,7 @@ import type { Category, Photo, Place, SectionId } from '../db/types'
 import { PRICE_LABELS, sectionInfo } from '../domain/catalog'
 import { stationBadge } from '../domain/lines'
 import { buildHash, goBack } from '../lib/hooks'
+import { plural } from '../lib/plural'
 import { SyncPill } from '../ui/components'
 import { IconBack, IconInbox, IconSearch, IconSettings, IconStar, IconTrain } from '../ui/icons'
 
@@ -46,6 +47,37 @@ export function StationBadge(props: { code?: string; city?: string; size?: 'sm' 
       <span class="st-badge__line">{info.line}</span>
       <span class="st-badge__num">{info.number}</span>
     </span>
+  )
+}
+
+/** Есть что показать в строке станции: своя станция или точки сети. */
+export function hasStation(place: Place): boolean {
+  return Boolean(place.station || place.stationCode || place.branches?.length)
+}
+
+/** Строка станции в карточке и поиске. У сети — значки первых точек внахлёст (как пересадочный узел) и «8 точек». */
+export function StationSummary(props: { place: Place; nameClass?: string }) {
+  const { place } = props
+  const branches = place.branches ?? []
+  if (!branches.length) {
+    return (
+      <>
+        <StationBadge code={place.stationCode} city={place.city} />
+        <span class={props.nameClass}>{place.station || place.stationJa}</span>
+      </>
+    )
+  }
+  const codes = new Map<string, string>()
+  for (const b of branches) if (b.stationCode && !codes.has(b.stationCode) && codes.size < 3) codes.set(b.stationCode, b.city)
+  return (
+    <>
+      <span class="badge-stack">
+        {codes.size ? [...codes].map(([code, city]) => <StationBadge code={code} city={city} />) : <StationBadge />}
+      </span>
+      <span class={props.nameClass}>
+        {branches.length} {plural(branches.length, 'точка', 'точки', 'точек')}
+      </span>
+    </>
   )
 }
 
@@ -178,10 +210,9 @@ export function PlaceCard(props: { place: Place; categories: Map<string, Categor
       </div>
       <div class="card__body">
         <h3 class="card__name">{place.name}</h3>
-        {(place.station || place.stationCode) && (
+        {hasStation(place) && (
           <p class="card__station">
-            <StationBadge code={place.stationCode} city={place.city} />
-            <span class="card__station-name">{place.station || place.stationJa}</span>
+            <StationSummary place={place} nameClass="card__station-name" />
           </p>
         )}
         <p class="card__meta">

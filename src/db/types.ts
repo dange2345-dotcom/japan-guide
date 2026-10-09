@@ -25,6 +25,21 @@ export interface Photo {
   h: number
 }
 
+/** Точка сети (Gyu-Kaku, Daiso…): у сети одна карточка, а станция, адрес, часы и ссылка — у каждой точки свои. */
+export interface Branch {
+  /** Название точки латиницей, как в Картах: «Gyu-Kaku Shibuya Senta-gai». Пусто — подписи нет, только станция. */
+  name?: string
+  /** Название точки по-японски: «牛角 渋谷3rd店». */
+  nameJa: string
+  city: string
+  station: string
+  stationJa: string
+  stationCode?: string
+  address: string
+  hours: string
+  mapsUrl: string
+}
+
 export interface Place extends SyncMeta {
   section: SectionId
   categoryIds: string[]
@@ -50,6 +65,8 @@ export interface Place extends SyncMeta {
   status: PlaceStatus
   favorite: boolean
   createdAt: number
+  /** Точки сети. Есть — карточка показывает их список вместо одной станции и адреса. У старых записей поля нет. */
+  branches?: Branch[]
 }
 
 /** Чьи категории: раздела мест или товаров («Что купить»). */

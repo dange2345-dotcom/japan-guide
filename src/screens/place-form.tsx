@@ -12,7 +12,7 @@ import { buildHash, goBack, navigate } from '../lib/hooks'
 import { deletePhotoFiles, uploadPhoto } from '../lib/photos'
 import { ErrorText, Field } from '../ui/components'
 import { IconCamera, IconPlus, IconTrash } from '../ui/icons'
-import { PageHead } from './parts'
+import { PageHead, StationBadge } from './parts'
 
 /** Новое место: #/new?section=food&source=…&note=…&inbox=<id>. Правка: #/edit/<id>. */
 export function PlaceFormScreen(props: { placeId?: string; params: URLSearchParams }) {
@@ -75,6 +75,7 @@ function PlaceForm({ existing, places, params }: { existing: Place | null; place
 
   const sectionCats = sectionCategories(categories ?? [], fields.section)
   const cities = citiesOf(places)
+  const branches = fields.branches ?? []
   const duplicate = fields.name.trim()
     ? findDuplicate(
         places.filter((p) => p.id !== id),
@@ -277,27 +278,60 @@ function PlaceForm({ existing, places, params }: { existing: Place | null; place
               ))}
             </datalist>
           </Field>
-          <Field label="Ближайшая станция">
-            <input type="text" value={fields.station} onInput={(e) => set('station', e.currentTarget.value)} />
-          </Field>
-          <Field label="Станция по-японски">
-            <input type="text" lang="ja" value={fields.stationJa} onInput={(e) => set('stationJa', e.currentTarget.value)} />
-          </Field>
-          <Field label="Номер станции" hint="С указателей: G01, JY20 — нарисуется значок линии">
-            <input
-              type="text"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellcheck={false}
-              value={fields.stationCode ?? ''}
-              onInput={(e) => set('stationCode', e.currentTarget.value)}
-              onBlur={(e) => set('stationCode', e.currentTarget.value.trim() ? normalizeStationCode(e.currentTarget.value) : '')}
-            />
-          </Field>
-          <Field label="Часы работы">
-            <input type="text" placeholder="11:00–22:00, вт выходной" value={fields.hours} onInput={(e) => set('hours', e.currentTarget.value)} />
-          </Field>
+          {!branches.length && (
+            <>
+              <Field label="Ближайшая станция">
+                <input type="text" value={fields.station} onInput={(e) => set('station', e.currentTarget.value)} />
+              </Field>
+              <Field label="Станция по-японски">
+                <input type="text" lang="ja" value={fields.stationJa} onInput={(e) => set('stationJa', e.currentTarget.value)} />
+              </Field>
+              <Field label="Номер станции" hint="С указателей: G01, JY20 — нарисуется значок линии">
+                <input
+                  type="text"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellcheck={false}
+                  value={fields.stationCode ?? ''}
+                  onInput={(e) => set('stationCode', e.currentTarget.value)}
+                  onBlur={(e) => set('stationCode', e.currentTarget.value.trim() ? normalizeStationCode(e.currentTarget.value) : '')}
+                />
+              </Field>
+              <Field label="Часы работы">
+                <input type="text" placeholder="11:00–22:00, вт выходной" value={fields.hours} onInput={(e) => set('hours', e.currentTarget.value)} />
+              </Field>
+            </>
+          )}
         </div>
+
+        {branches.length > 0 && (
+          <fieldset class="field field--wide">
+            <legend class="field__label">Точки сети — {branches.length}</legend>
+            <ul class="branch-edit">
+              {branches.map((b, index) => (
+                <li class="branch-edit__item">
+                  <StationBadge code={b.stationCode} city={b.city} />
+                  <span class="branch-edit__text">
+                    <span class="branch-edit__station">{[b.station || b.stationJa, b.name].filter(Boolean).join(' · ') || b.nameJa}</span>
+                    {b.address && (
+                      <span class="branch-edit__address" lang="ja">
+                        {b.address}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    aria-label={`Убрать точку ${b.station}`}
+                    onClick={() => set('branches', branches.filter((_, i) => i !== index))}
+                  >
+                    <IconTrash size={18} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
 
         <fieldset class="field field--wide">
           <legend class="field__label">Цена</legend>
@@ -316,12 +350,16 @@ function PlaceForm({ existing, places, params }: { existing: Place | null; place
           </div>
         </fieldset>
 
-        <Field label="Ссылка Google Maps" hint="Поделиться → Скопировать ссылку" wide>
-          <input type="url" inputMode="url" autoCapitalize="none" value={fields.mapsUrl} onInput={(e) => set('mapsUrl', e.currentTarget.value)} />
-        </Field>
-        <Field label="Адрес" wide>
-          <input type="text" value={fields.address} onInput={(e) => set('address', e.currentTarget.value)} />
-        </Field>
+        {!branches.length && (
+          <>
+            <Field label="Ссылка Google Maps" hint="Поделиться → Скопировать ссылку" wide>
+              <input type="url" inputMode="url" autoCapitalize="none" value={fields.mapsUrl} onInput={(e) => set('mapsUrl', e.currentTarget.value)} />
+            </Field>
+            <Field label="Адрес" wide>
+              <input type="text" value={fields.address} onInput={(e) => set('address', e.currentTarget.value)} />
+            </Field>
+          </>
+        )}
         <Field label="Откуда узнал" hint="Ссылки на рилсы, посты, статьи — каждая с новой строки" wide>
           <textarea rows={2} autoCapitalize="none" value={sources} onInput={(e) => setSources(e.currentTarget.value)} />
         </Field>

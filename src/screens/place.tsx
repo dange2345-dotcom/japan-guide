@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useApp } from '../app-context'
 import { updatePlace } from '../data/records'
 import { useRow, useRows } from '../data/use-data'
-import type { Category, Place } from '../db/types'
+import type { Category, Place, SectionId } from '../db/types'
 import { PRICE_LABELS, isSection, sectionInfo } from '../domain/catalog'
 import { shortUrl } from '../domain/markdown'
-import { filterPlaces, mapsLink } from '../domain/places'
+import { filterPlaces, mapsLink, placeCities } from '../domain/places'
 import { buildHash, goBack, navigate } from '../lib/hooks'
 import { IconBack, IconCheck, IconCopy, IconEdit, IconKana, IconLink, IconMap, IconStar } from '../ui/icons'
 import { HeaderTools, PlacePhoto, StationBadge } from './parts'
@@ -54,9 +54,13 @@ function PlaceView(props: {
 }) {
   const { place } = props
   const { db, canEdit } = useApp()
-  const [japanese, setJapanese] = useState(false)
+  // Что показать крупно по-японски: само место (сеть) или одну её точку.
+  const [japanese, setJapanese] = useState<JaSign | null>(null)
   const [copied, setCopied] = useState(false)
   const info = sectionInfo(place.section)
+  const branches = place.branches ?? []
+  const cities = placeCities(place)
+  const placeSign: JaSign = { name: place.name, nameJa: place.nameJa, stationJa: branches.length ? '' : place.stationJa, address: branches.length ? '' : place.address }
   const cats = place.categoryIds.map((id) => props.categories.find((c) => c.id === id)).filter((c): c is Category => Boolean(c))
   const go = (target: Place | null) => target && navigate(buildHash(`place/${target.id}`, props.navParams), true)
 
@@ -138,21 +142,76 @@ function PlaceView(props: {
       <div class="place__actions">
         <a class="btn btn--exit btn--block" href={mapsLink(place)} target="_blank" rel="noopener noreferrer">
           <IconMap size={20} />
-          Открыть в Google Maps
+          {branches.length ? 'Ближайшие на карте' : 'Открыть в Google Maps'}
           <span class="btn__arrow" aria-hidden="true">
             ↗
           </span>
         </a>
         {(place.nameJa || place.stationJa) && (
-          <button class="btn btn--block" type="button" onClick={() => setJapanese(true)}>
+          <button class="btn btn--block" type="button" onClick={() => setJapanese(placeSign)}>
             <IconKana size={20} />
             Показать по-японски
           </button>
         )}
       </div>
 
+      {branches.length > 0 && (
+        <section class="branches" aria-labelledby="branches-title">
+          <h2 class="branches__title" id="branches-title">
+            Точки сети <span class="branches__count num">{branches.length}</span>
+          </h2>
+          <ol class="branches__list">
+            {branches.map((b) => (
+              <li class="branch">
+                <StationBadge code={b.stationCode} city={b.city} size="md" />
+                <div class="branch__body">
+                  <p class="branch__station">
+                    {b.station || b.stationJa}
+                    {b.stationJa && b.station && (
+                      <span class="rows__ja" lang="ja">
+                        {' '}
+                        {b.stationJa}
+                      </span>
+                    )}
+                    {cities.length > 1 && b.city && <span class="branch__city"> · {b.city}</span>}
+                  </p>
+                  {(b.name || b.nameJa) && (
+                    <p class="branch__label" lang={b.name ? undefined : 'ja'}>
+                      {b.name || b.nameJa}
+                    </p>
+                  )}
+                  {b.address && (
+                    <p class="branch__address" lang="ja">
+                      {b.address}
+                    </p>
+                  )}
+                  {b.hours && <p class="branch__hours">{b.hours}</p>}
+                  <div class="branch__actions">
+                    <a class="btn btn--small" href={mapsLink({ ...b, name: place.name, nameJa: b.nameJa || place.nameJa })} target="_blank" rel="noopener noreferrer">
+                      <IconMap size={16} />
+                      Карта
+                      <span class="btn__arrow" aria-hidden="true">
+                        ↗
+                      </span>
+                    </a>
+                    <button
+                      class="btn btn--small"
+                      type="button"
+                      onClick={() => setJapanese({ name: b.name || `${place.name} — ${b.station}`, nameJa: b.nameJa || place.nameJa, stationJa: b.stationJa, address: b.address })}
+                    >
+                      <IconKana size={16} />
+                      По-японски
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <dl class="rows">
-        {(place.station || place.stationCode) && (
+        {!branches.length && (place.station || place.stationCode) && (
           <div class="rows__item">
             <dt>Станция</dt>
             <dd class="rows__station">
@@ -169,13 +228,13 @@ function PlaceView(props: {
             </dd>
           </div>
         )}
-        {place.city && (
+        {cities.length > 0 && (
           <div class="rows__item">
-            <dt>Город</dt>
-            <dd>{place.city}</dd>
+            <dt>{cities.length > 1 ? 'Города' : 'Город'}</dt>
+            <dd>{cities.join(', ')}</dd>
           </div>
         )}
-        {place.address && (
+        {!branches.length && place.address && (
           <div class="rows__item">
             <dt>Адрес</dt>
             <dd class="rows__copy">
@@ -186,7 +245,7 @@ function PlaceView(props: {
             </dd>
           </div>
         )}
-        {place.hours && (
+        {!branches.length && place.hours && (
           <div class="rows__item">
             <dt>Часы</dt>
             <dd>{place.hours}</dd>
@@ -270,7 +329,7 @@ function PlaceView(props: {
         </nav>
       )}
 
-      {japanese && <JapaneseBoard place={place} onClose={() => setJapanese(false)} />}
+      {japanese && <JapaneseBoard sign={japanese} section={place.section} onClose={() => setJapanese(null)} />}
     </article>
   )
 }
@@ -283,23 +342,31 @@ export function sourceLabel(url: string): string {
   return shortUrl(url).slice(0, 40)
 }
 
+/** Что показать по-японски: место целиком или точка сети. */
+interface JaSign {
+  name: string
+  nameJa: string
+  stationJa: string
+  address: string
+}
+
 /** На весь экран, крупно — показать таксисту или персоналу. Нажатие закрывает. */
-function JapaneseBoard({ place, onClose }: { place: Place; onClose: () => void }) {
+function JapaneseBoard({ sign, section, onClose }: { sign: JaSign; section: SectionId; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
-  const jaAddress = /[぀-ヿ一-龯]/.test(place.address) ? place.address : ''
+  const jaAddress = /[぀-ヿ一-龯]/.test(sign.address) ? sign.address : ''
   return (
-    <div class="ja-board" role="dialog" aria-modal="true" aria-label="По-японски" onClick={onClose} style={{ '--line': sectionInfo(place.section).color }}>
+    <div class="ja-board" role="dialog" aria-modal="true" aria-label="По-японски" onClick={onClose} style={{ '--line': sectionInfo(section).color }}>
       <div class="ja-board__sign">
         <p class="ja-board__name" lang="ja">
-          {place.nameJa || place.name}
+          {sign.nameJa || sign.name}
         </p>
-        {place.stationJa && (
+        {sign.stationJa && (
           <p class="ja-board__station" lang="ja">
-            最寄り駅：{place.stationJa.replace(/駅$/, "")}駅
+            最寄り駅：{sign.stationJa.replace(/駅$/, "")}駅
           </p>
         )}
         {jaAddress && (
@@ -307,7 +374,7 @@ function JapaneseBoard({ place, onClose }: { place: Place; onClose: () => void }
             {jaAddress}
           </p>
         )}
-        <p class="ja-board__ru">{place.name}</p>
+        <p class="ja-board__ru">{sign.name}</p>
       </div>
       <p class="ja-board__hint">Нажмите, чтобы закрыть</p>
     </div>
