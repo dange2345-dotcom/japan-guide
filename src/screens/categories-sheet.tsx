@@ -2,22 +2,24 @@ import { useState } from 'preact/hooks'
 import { useApp } from '../app-context'
 import { createCategory, deleteCategory, swapCategoryOrder, updateCategory } from '../data/records'
 import { useRows } from '../data/use-data'
-import type { Category, SectionId } from '../db/types'
-import { sectionInfo } from '../domain/catalog'
+import type { Category, CategoryGroup } from '../db/types'
+import { groupTitle } from '../domain/catalog'
 import { sectionCategories } from '../domain/places'
 import { Sheet } from '../ui/components'
 import { IconChevronDown, IconTrash, IconUp } from '../ui/icons'
 
-/** Редактор категорий раздела: переименовать, значок, порядок, удалить, добавить. */
-export function CategoriesSheet(props: { section: SectionId; onClose: () => void }) {
+/** Редактор категорий раздела (или товаров): переименовать, значок, порядок, удалить, добавить. */
+export function CategoriesSheet(props: { section: CategoryGroup; onClose: () => void }) {
   const { db } = useApp()
   const categories = useRows('categories')
   const places = useRows('places')
+  const items = useRows('items')
   const list = sectionCategories(categories ?? [], props.section)
+  const forItems = props.section === 'items'
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('')
 
-  const usage = (id: string) => (places ?? []).filter((p) => p.categoryIds.includes(id)).length
+  const usage = (id: string) => ((forItems ? items : places) ?? []).filter((r) => r.categoryIds.includes(id)).length
 
   async function add(event: Event) {
     event.preventDefault()
@@ -29,12 +31,12 @@ export function CategoriesSheet(props: { section: SectionId; onClose: () => void
 
   async function remove(category: Category) {
     const n = usage(category.id)
-    const tail = n ? ` Она снимется с мест: ${n} (сами места останутся).` : ''
+    const tail = n ? (forItems ? ` Она снимется с товаров: ${n} (сами товары останутся).` : ` Она снимется с мест: ${n} (сами места останутся).`) : ''
     if (confirm(`Удалить категорию «${category.name}»?${tail}`)) await deleteCategory(db, category.id)
   }
 
   return (
-    <Sheet title={`Категории · ${sectionInfo(props.section).title}`} onClose={props.onClose}>
+    <Sheet title={`Категории · ${groupTitle(props.section)}`} onClose={props.onClose}>
       <ul class="cat-editor">
         {list.map((c, i) => (
           <li class="cat-editor__row" key={c.id}>
@@ -46,7 +48,7 @@ export function CategoriesSheet(props: { section: SectionId; onClose: () => void
               onChange={(e) => void updateCategory(db, c.id, { emoji: e.currentTarget.value.trim() || '📍' })}
             />
             <input class="cat-editor__name" aria-label="Название" value={c.name} onChange={(e) => e.currentTarget.value.trim() && void updateCategory(db, c.id, { name: e.currentTarget.value.trim() })} />
-            <span class="cat-editor__count num" title="Мест в категории">
+            <span class="cat-editor__count num" title={forItems ? 'Товаров в категории' : 'Мест в категории'}>
               {usage(c.id) || ''}
             </span>
             <button class="icon-btn" type="button" aria-label="Выше" disabled={i === 0} onClick={() => void swapCategoryOrder(db, c, list[i - 1])}>

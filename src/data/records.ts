@@ -1,6 +1,6 @@
 import type { JapanDB } from '../db/db'
-import type { Category, Guide, GuideTopic, InboxItem, Place, SectionId } from '../db/types'
-import { insert, nextOrder, remove, update, type Fields } from './entities'
+import type { Category, CategoryGroup, Guide, GuideTopic, InboxItem, Item, Place } from '../db/types'
+import { insert, nextOrder, remove, update, updateMany, type Fields } from './entities'
 
 // Обёртки записи по разделам. Все правки идут через entities (dirty, время, проверка роли).
 
@@ -19,9 +19,26 @@ export function deletePlace(db: JapanDB, id: string) {
   return remove(db, 'places', id)
 }
 
+/* ---------- товары («Что купить») ---------- */
+
+export type ItemFields = Fields<Item>
+
+/** id можно задать заранее — фото загружается в папку товара до сохранения. */
+export function createItem(db: JapanDB, fields: ItemFields, id?: string): Promise<string> {
+  return insert(db, 'items', fields, id)
+}
+
+export function updateItem(db: JapanDB, id: string, changes: Partial<ItemFields>) {
+  return update(db, 'items', id, changes)
+}
+
+export function deleteItem(db: JapanDB, id: string) {
+  return remove(db, 'items', id)
+}
+
 /* ---------- категории ---------- */
 
-export async function createCategory(db: JapanDB, section: SectionId, name: string, emoji: string): Promise<string> {
+export async function createCategory(db: JapanDB, section: CategoryGroup, name: string, emoji: string): Promise<string> {
   return insert(db, 'categories', { section, name: name.trim(), emoji: emoji.trim(), order: await nextOrder(db, 'categories') } satisfies Fields<Category>)
 }
 
@@ -29,10 +46,12 @@ export function updateCategory(db: JapanDB, id: string, changes: Partial<Fields<
   return update(db, 'categories', id, changes)
 }
 
-/** Удалить категорию и убрать её из мест (сами места остаются). */
+/** Удалить категорию и убрать её из мест и товаров (сами они остаются). */
 export async function deleteCategory(db: JapanDB, id: string) {
   const places = (await db.places.toArray()).filter((p) => !p.deleted && p.categoryIds.includes(id))
-  for (const place of places) await update(db, 'places', place.id, { categoryIds: place.categoryIds.filter((c) => c !== id) })
+  await updateMany(db, 'places', places.map((p) => p.id), (p) => ({ categoryIds: p.categoryIds.filter((c) => c !== id) }))
+  const items = (await db.items.toArray()).filter((i) => !i.deleted && i.categoryIds.includes(id))
+  await updateMany(db, 'items', items.map((i) => i.id), (i) => ({ categoryIds: i.categoryIds.filter((c) => c !== id) }))
   await remove(db, 'categories', id)
 }
 

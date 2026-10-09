@@ -47,14 +47,14 @@ async function encode(image: ImageBitmap | HTMLImageElement, maxSide: number, qu
   return { blob, w: canvas.width, h: canvas.height }
 }
 
-/** Сжать и загрузить фото места. Нужна сеть. */
-export async function uploadPhoto(client: SupabaseClient, placeId: string, file: Blob): Promise<Photo> {
+/** Сжать и загрузить фото места (или товара — folder 'items'). Нужна сеть. */
+export async function uploadPhoto(client: SupabaseClient, placeId: string, file: Blob, folder: 'places' | 'items' = 'places'): Promise<Photo> {
   const image = await decode(file)
   const full = await encode(image, FULL_SIDE, 0.82)
   const thumb = await encode(image, THUMB_SIDE, 0.78)
   if ('close' in image) image.close()
 
-  const base = `places/${placeId}/${crypto.randomUUID()}`
+  const base = `${folder}/${placeId}/${crypto.randomUUID()}`
   const photo: Photo = { path: `${base}.jpg`, thumb: `${base}-t.jpg`, w: full.w, h: full.h }
   const bucket = client.storage.from(PHOTO_BUCKET)
   for (const [path, blob] of [

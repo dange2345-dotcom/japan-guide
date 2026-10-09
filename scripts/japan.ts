@@ -11,9 +11,15 @@
 //   npm run japan -- edit-place <ref> [те же поля] [--photo none] [--no-fav]
 //   npm run japan -- delete-place <ref>
 //   npm run japan -- import <файл.json> [--yes] [--create-categories]   без --yes — только предпросмотр
+//        файл — массив мест или { "places": [...], "items": [...] }
 //
-//   npm run japan -- categories [--section food]
-//   npm run japan -- add-category --section food --name "…" --emoji 🍜
+//   npm run japan -- items [--status want|note|bought] [--category <ref>]  |  show-item <ref>
+//   npm run japan -- add-item --name "…" [--name-ja "…"] [--category Уход,Аптека] [--where "…"] [--shop <ref>,<ref>]
+//        [--price "¥1,100"] [--note "…"] [--source <url>,<url>] [--photo <файл|url>] [--status want|note|bought]
+//   npm run japan -- edit-item <ref> [те же поля] [--photo none]  |  delete-item <ref>
+//
+//   npm run japan -- categories [--section food|…|items]
+//   npm run japan -- add-category --section food|…|items --name "…" --emoji 🍜
 //   npm run japan -- edit-category <ref> [--name "…"] [--emoji …]  |  delete-category <ref>
 //
 //   npm run japan -- guides  |  show-guide <ref>
@@ -35,8 +41,22 @@ import { resolve } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
 import { PHOTO_BUCKET, SUPABASE_URL } from '../src/config'
-import type { Category, Guide, GuideTopic, InboxItem, Photo, Place, PlaceStatus, SectionId, SyncMeta } from '../src/db/types'
-import { DEFAULT_CATEGORIES, GUIDE_TOPICS, isSection, isTopic, PRICE_LABELS, SECTIONS, sectionInfo, topicInfo } from '../src/domain/catalog'
+import type { Category, CategoryGroup, Guide, GuideTopic, InboxItem, Item, ItemStatus, Photo, Place, PlaceStatus, SectionId, SyncMeta } from '../src/db/types'
+import {
+  DEFAULT_CATEGORIES,
+  GUIDE_TOPICS,
+  groupTitle,
+  isCategoryGroup,
+  isItemStatus,
+  isSection,
+  isTopic,
+  ITEM_STATUSES,
+  PRICE_LABELS,
+  SECTIONS,
+  sectionInfo,
+  topicInfo,
+} from '../src/domain/catalog'
+import { blankItem, compareItems, findDuplicateItem } from '../src/domain/items'
 import { normalizeStationCode } from '../src/domain/lines'
 import { blankPlace, comparePlaces, findDuplicate, normalize, sectionCategories } from '../src/domain/places'
 
@@ -151,12 +171,12 @@ async function readImage(source: string): Promise<Buffer> {
 }
 
 /** Как в приложении: большое ≤1600 px и миниатюра ≤600 px, JPEG. */
-async function uploadPhoto(placeId: string, source: string): Promise<Photo> {
+async function uploadPhoto(placeId: string, source: string, folder: 'places' | 'items' = 'places'): Promise<Photo> {
   const input = await readImage(source)
   const image = sharp(input, { failOn: 'none' }).rotate()
   const full = await image.clone().resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer({ resolveWithObject: true })
   const thumb = await image.clone().resize(600, 600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 78, mozjpeg: true }).toBuffer()
-  const base = `places/${placeId}/${randomUUID()}`
+  const base = `${folder}/${placeId}/${randomUUID()}`
   const photo: Photo = { path: `${base}.jpg`, thumb: `${base}-t.jpg`, w: full.info.width, h: full.info.height }
   for (const [path, data] of [
     [photo.path, full.data],
@@ -233,8 +253,8 @@ function parseStatus(value: string | undefined): PlaceStatus | undefined {
   return value
 }
 
-/** Названия категорий → id (в разделе). Неизвестные — в missing. */
-function resolveCategories(names: string[], section: SectionId, categories: Category[]): { ids: string[]; missing: string[] } {
+/** Названия категорий → id (в разделе или у товаров). Неизвестные — в missing. */
+function resolveCategories(names: string[], section: CategoryGroup, categories: Category[]): { ids: string[]; missing: string[] } {
   const own = categories.filter((c) => c.section === section)
   const ids: string[] = []
   const missing: string[] = []
@@ -325,6 +345,123 @@ function printPlace(p: Place, categories: Map<string, Category>) {
     ['Фото', p.photo ? `${p.photo.path} (${p.photo.w}×${p.photo.h})` : ''],
     ['Статус', `${p.status === 'been' ? 'был' : 'хочу'}${p.favorite ? ', избранное' : ''}`],
     ['Заметка', p.note],
+  ]
+  for (const [label, value] of lines) if (value) console.log(`${label.padEnd(11)}  ${value}`)
+}
+
+/* ---------- товары («Что купить») ---------- */
+
+const ITEM_OPTIONS = {
+  name: { type: 'string' },
+  'name-ja': { type: 'string' },
+  category: { type: 'string' },
+  where: { type: 'string' },
+  shop: { type: 'string' },
+  price: { type: 'string' },
+  note: { type: 'string' },
+  source: { type: 'string' },
+  photo: { type: 'string' },
+  status: { type: 'string' },
+} as const
+
+type ItemInput = {
+  name?: string
+  nameJa?: string
+  category?: string | string[]
+  where?: string
+  /** Магазины из «Шопинга»: начало id или название. */
+  shops?: string | string[]
+  price?: string
+  note?: string
+  source?: string | string[]
+  photo?: string
+  status?: string
+}
+
+const itemText = (i: Item) => [i.name, i.nameJa]
+
+function parseItemStatus(value: string | undefined): ItemStatus | undefined {
+  if (value === undefined) return undefined
+  if (!isItemStatus(value)) fail('Статус товара: want, note или bought')
+  return value
+}
+
+function itemInputFromArgs(values: Record<string, string | boolean | undefined>): ItemInput {
+  return {
+    name: values.name as string | undefined,
+    nameJa: values['name-ja'] as string | undefined,
+    category: values.category as string | undefined,
+    where: values.where as string | undefined,
+    shops: values.shop as string | undefined,
+    price: values.price as string | undefined,
+    note: values.note as string | undefined,
+    source: values.source as string | undefined,
+    photo: values.photo as string | undefined,
+    status: values.status as string | undefined,
+  }
+}
+
+/** Магазины по ссылкам (id или название) среди мест; ненайденные — в missing. */
+function resolveShops(refs: string[], places: Place[]): { ids: string[]; missing: string[] } {
+  const ids: string[] = []
+  const missing: string[] = []
+  for (const ref of refs) {
+    const needle = normalize(ref)
+    const found =
+      places.find((p) => p.id.startsWith(ref)) ??
+      places.find((p) => placeText(p).some((t) => normalize(t) === needle)) ??
+      places.filter((p) => p.section === 'shop' && placeText(p).some((t) => normalize(t).includes(needle))).at(0)
+    if (found) ids.push(found.id)
+    else missing.push(ref)
+  }
+  return { ids, missing }
+}
+
+function applyItemInput(item: Item, input: ItemInput, categoryIds?: string[], shopIds?: string[]): Item {
+  const next = { ...item }
+  if (input.name !== undefined) next.name = input.name.trim()
+  if (input.nameJa !== undefined) next.nameJa = input.nameJa.trim()
+  if (categoryIds) next.categoryIds = categoryIds
+  if (shopIds) next.shopIds = shopIds
+  if (input.where !== undefined) next.where = input.where.trim()
+  if (input.price !== undefined) next.price = input.price.trim()
+  if (input.note !== undefined) next.note = input.note.trim()
+  if (input.source !== undefined) next.sourceUrls = list(input.source)
+  const status = parseItemStatus(input.status)
+  if (status) next.status = status
+  return next
+}
+
+const ITEM_MARK: Record<ItemStatus, string> = { want: '•', note: '¿', bought: '✓' }
+
+function itemLine(i: Item, categories: Map<string, Category>, places: Map<string, Place>): string {
+  const cats = i.categoryIds.map((id) => categories.get(id)).filter(Boolean).map((c) => `${c!.emoji}${c!.name}`).join(' ')
+  const shops = i.shopIds.map((id) => places.get(id)?.name).filter(Boolean)
+  const bits = [
+    ITEM_MARK[i.status],
+    i.id.slice(0, 8),
+    i.name + (i.nameJa ? ` (${i.nameJa})` : ''),
+    cats && `· ${cats}`,
+    [i.where, ...shops.map((n) => `🛍 ${n}`)].filter(Boolean).join(', '),
+    i.price,
+    i.photo ? '📷' : '',
+  ]
+  return bits.filter(Boolean).join('  ')
+}
+
+function printItem(i: Item, categories: Map<string, Category>, places: Map<string, Place>) {
+  const lines: [string, string][] = [
+    ['id', i.id],
+    ['Название', i.name],
+    ['По-японски', i.nameJa],
+    ['Статус', ITEM_STATUSES.find((s) => s.id === i.status)?.label ?? i.status],
+    ['Категории', i.categoryIds.map((id) => categories.get(id)?.name ?? `?${id}`).join(', ')],
+    ['Что это', i.note],
+    ['Где купить', i.where],
+    ['Магазины', i.shopIds.map((id) => places.get(id)?.name ?? `?${id}`).join(', ')],
+    ['Цена', i.price],
+    ['Источники', i.sourceUrls.join('\n             ')],
+    ['Фото', i.photo ? `${i.photo.path} (${i.photo.w}×${i.photo.h})` : ''],
   ]
   for (const [label, value] of lines) if (value) console.log(`${label.padEnd(11)}  ${value}`)
 }
@@ -451,14 +588,16 @@ switch (command) {
     const { values, positionals } = args({ yes: { type: 'boolean' }, 'create-categories': { type: 'boolean' } })
     if (!positionals[0]) fail('Нужен файл: npm run japan -- import <файл.json>')
     let items: PlaceInput[]
+    let goods: ItemInput[]
     try {
       const parsed = JSON.parse(readFileSync(resolve(positionals[0]), 'utf8'))
-      items = Array.isArray(parsed) ? parsed : parsed.places
-      if (!Array.isArray(items)) throw new Error('ожидался массив мест')
+      items = Array.isArray(parsed) ? parsed : (parsed.places ?? [])
+      goods = Array.isArray(parsed) ? [] : (parsed.items ?? [])
+      if (!Array.isArray(items) || !Array.isArray(goods)) throw new Error('ожидался массив мест или { places: [...], items: [...] }')
     } catch (error) {
       fail(`Не удалось прочитать ${positionals[0]}: ${error instanceof Error ? error.message : error}`)
     }
-    const [places, categories] = await Promise.all([load<Place>('place'), load<Category>('category')])
+    const [places, categories, existingItems] = await Promise.all([load<Place>('place'), load<Category>('category'), load<Item>('item')])
     const known = [...places]
     const plan: { input: PlaceInput; section: SectionId; ids: string[]; missing: string[] }[] = []
     const skipped: string[] = []
@@ -479,12 +618,35 @@ switch (command) {
         skipped.push(`${input.name} — уже есть «${dup.name}»`)
         continue
       }
-      known.push({ ...blankPlace(input.section), ...probe, id: `new-${index}`, updatedAt: 0, deleted: 0, dirty: 0 })
+      known.push({ ...blankPlace(input.section), ...probe, nameJa: input.nameJa ?? '', id: `new-${index}`, updatedAt: 0, deleted: 0, dirty: 0 })
       plan.push({ input, section: input.section, ...resolveCategories(list(input.category), input.section, categories) })
     }
 
-    const missingCats = new Map<string, { section: SectionId; name: string }>()
+    // Товары: дубли — по названию (рус./яп.), магазины — среди мест, в том числе новых из этого же файла.
+    const knownItems: Pick<Item, 'name' | 'nameJa'>[] = [...existingItems]
+    const itemPlan: { input: ItemInput; ids: string[]; missing: string[]; shops: string[]; missingShops: string[] }[] = []
+    for (const [index, input] of goods.entries()) {
+      if (!input.name?.trim()) {
+        problems.push(`товар #${index + 1}: нет названия`)
+        continue
+      }
+      if (input.status !== undefined && !isItemStatus(input.status)) {
+        problems.push(`${input.name}: статус «${input.status}» — нужен want/note/bought`)
+        continue
+      }
+      const dup = findDuplicateItem(knownItems, { name: input.name, nameJa: input.nameJa ?? '' })
+      if (dup) {
+        skipped.push(`${input.name} — уже есть товар «${dup.name}»`)
+        continue
+      }
+      knownItems.push({ name: input.name, nameJa: input.nameJa ?? '' })
+      const shops = resolveShops(list(input.shops), known)
+      itemPlan.push({ input, ...resolveCategories(list(input.category), 'items', categories), shops: shops.ids, missingShops: shops.missing })
+    }
+
+    const missingCats = new Map<string, { section: CategoryGroup; name: string }>()
     for (const p of plan) for (const name of p.missing) missingCats.set(`${p.section}:${normalize(name)}`, { section: p.section, name })
+    for (const p of itemPlan) for (const name of p.missing) missingCats.set(`items:${normalize(name)}`, { section: 'items', name })
 
     for (const section of SECTIONS) {
       const inSection = plan.filter((p) => p.section === section.id)
@@ -495,14 +657,31 @@ switch (command) {
         console.log(`  + ${input.name}${input.city ? ` · ${input.city}` : ''}${input.station ? ` · 🚉 ${input.station}` : ''}${cats ? ` · ${cats}` : ''}${input.photo ? ' · 📷' : ''}`)
       }
     }
+    if (itemPlan.length) {
+      console.log(`\n🛒 Что купить — ${itemPlan.length}`)
+      for (const status of ITEM_STATUSES) {
+        const inStatus = itemPlan.filter((p) => (p.input.status ?? 'want') === status.id)
+        if (inStatus.length === 0) continue
+        console.log(`  ${status.label} — ${inStatus.length}`)
+        for (const { input, ids, missing, shops, missingShops } of inStatus) {
+          const cats = [...ids.map((id) => categories.find((c) => c.id === id)!.name), ...missing.map((m) => `${m}*`)].join(', ')
+          const shopNames = [...shops.map((id) => known.find((p) => p.id === id)?.name), ...missingShops.map((m) => `${m}?`)].filter(Boolean)
+          console.log(
+            `    + ${input.name}${input.nameJa ? ` (${input.nameJa})` : ''}${cats ? ` · ${cats}` : ''}${shopNames.length ? ` · 🛍 ${shopNames.join(', ')}` : ''}${input.price ? ` · ${input.price}` : ''}${input.photo ? ' · 📷' : ''}`,
+          )
+        }
+      }
+      const lost = itemPlan.flatMap((p) => p.missingShops)
+      if (lost.length) console.log(`  ? Магазины не найдены (товары запишутся без них): ${[...new Set(lost)].join(', ')}`)
+    }
     if (skipped.length) console.log(`\nПропущены (дубли) — ${skipped.length}:\n  ${skipped.join('\n  ')}`)
     if (problems.length) console.log(`\nОшибки — ${problems.length}:\n  ${problems.join('\n  ')}`)
     if (missingCats.size) {
-      console.log(`\n* Новые категории: ${[...missingCats.values()].map((c) => `${sectionInfo(c.section).title}/${c.name}`).join(', ')}`)
-      if (!values['create-categories']) console.log('  (создать — флаг --create-categories, иначе места будут без этих категорий)')
+      console.log(`\n* Новые категории: ${[...missingCats.values()].map((c) => `${groupTitle(c.section)}/${c.name}`).join(', ')}`)
+      if (!values['create-categories']) console.log('  (создать — флаг --create-categories, иначе записи будут без этих категорий)')
     }
     if (!values.yes) {
-      console.log(`\nПредпросмотр. Записать ${plan.length} мест: добавьте --yes`)
+      console.log(`\nПредпросмотр. Записать мест: ${plan.length}, товаров: ${itemPlan.length} — добавьте --yes`)
       break
     }
 
@@ -510,12 +689,13 @@ switch (command) {
     if (values['create-categories']) {
       let order = categories.reduce((max, c) => Math.max(max, c.order), 0)
       for (const { section, name } of missingCats.values()) {
-        const category = newEntity<Category>({ section, name: name.trim(), emoji: '📍', order: ++order })
+        const category = newEntity<Category>({ section, name: name.trim(), emoji: section === 'items' ? '🛍️' : '📍', order: ++order })
         await save('category', category)
         allCategories.push(category)
       }
     }
     let done = 0
+    const created: Place[] = []
     for (const { input, section } of plan) {
       const { ids } = resolveCategories(list(input.category), section, allCategories)
       const id = randomUUID()
@@ -528,20 +708,116 @@ switch (command) {
         }
       }
       await save('place', place)
+      created.push(place)
       done++
     }
-    console.log(`\n✔ Записано мест: ${done}`)
+    let doneItems = 0
+    for (const { input } of itemPlan) {
+      const { ids } = resolveCategories(list(input.category), 'items', allCategories)
+      const { ids: shopIds } = resolveShops(list(input.shops), [...places, ...created])
+      const id = randomUUID()
+      let item = applyItemInput(newEntity<Item>(blankItem(), id), input, ids, shopIds)
+      if (input.photo) {
+        try {
+          item = { ...item, photo: await uploadPhoto(id, input.photo, 'items') }
+        } catch {
+          console.log(`  ! фото не загрузилось: ${input.name}`)
+        }
+      }
+      await save('item', item)
+      doneItems++
+    }
+    console.log(`\n✔ Записано мест: ${done}, товаров: ${doneItems}`)
+    break
+  }
+
+  case 'items': {
+    const { values } = args({ status: { type: 'string' }, category: { type: 'string' } })
+    const status = parseItemStatus(values.status)
+    const [items, categories, places] = await Promise.all([load<Item>('item'), load<Category>('category'), load<Place>('place')])
+    const category = values.category ? findOne(categories.filter((c) => c.section === 'items'), values.category, 'категория', (c) => [c.name]) : null
+    const filtered = items.filter((i) => (!status || i.status === status) && (!category || i.categoryIds.includes(category.id))).sort(compareItems)
+    const byId = new Map(categories.map((c) => [c.id, c]))
+    const placeById = new Map(places.map((p) => [p.id, p]))
+    for (const s of ITEM_STATUSES) {
+      const inStatus = filtered.filter((i) => i.status === s.id)
+      if (inStatus.length === 0) continue
+      console.log(`\n${s.label} — ${inStatus.length}`)
+      for (const i of inStatus) console.log('  ' + itemLine(i, byId, placeById))
+    }
+    console.log(filtered.length ? `\nВсего: ${filtered.length} (• купить, ¿ на заметку, ✓ куплено)` : 'Товаров нет')
+    break
+  }
+
+  case 'show-item': {
+    const [items, categories, places] = await Promise.all([load<Item>('item'), load<Category>('category'), load<Place>('place')])
+    printItem(findOne(items, rest[0], 'товар', itemText), new Map(categories.map((c) => [c.id, c])), new Map(places.map((p) => [p.id, p])))
+    break
+  }
+
+  case 'add-item':
+  case 'edit-item': {
+    const { values, positionals } = args(ITEM_OPTIONS)
+    const input = itemInputFromArgs(values)
+    const [items, categories, places] = await Promise.all([load<Item>('item'), load<Category>('category'), load<Place>('place')])
+    let categoryIds: string[] | undefined
+    if (input.category !== undefined) {
+      const { ids, missing } = resolveCategories(list(input.category), 'items', categories)
+      if (missing.length) fail(`Нет таких категорий товаров: ${missing.join(', ')} (npm run japan -- categories --section items)`)
+      categoryIds = ids
+    }
+    let shopIds: string[] | undefined
+    if (input.shops !== undefined) {
+      const { ids, missing } = resolveShops(list(input.shops), places)
+      if (missing.length) fail(`Не найдены магазины: ${missing.join(', ')}`)
+      shopIds = ids
+    }
+    const byId = new Map(categories.map((c) => [c.id, c]))
+    const placeById = new Map(places.map((p) => [p.id, p]))
+    if (command === 'add-item') {
+      if (!input.name?.trim()) fail('Нужно --name')
+      const dup = findDuplicateItem(items, { name: input.name, nameJa: input.nameJa ?? '' })
+      if (dup) fail(`Похоже, уже есть: ${dup.name} (${dup.id.slice(0, 8)}) — правьте через edit-item`)
+      const id = randomUUID()
+      let item = applyItemInput(newEntity<Item>(blankItem(), id), input, categoryIds, shopIds)
+      if (input.photo) item = { ...item, photo: await uploadPhoto(id, input.photo, 'items') }
+      await save('item', item)
+      console.log(`✔ Добавлено: ${itemLine(item, byId, placeById)}`)
+    } else {
+      const item = findOne(items, positionals[0], 'товар', itemText)
+      let next = applyItemInput(item, input, categoryIds, shopIds)
+      if (input.photo === 'none') {
+        await deletePhoto(item.photo)
+        next = { ...next, photo: null }
+      } else if (input.photo) {
+        const photo = await uploadPhoto(item.id, input.photo, 'items')
+        await deletePhoto(item.photo)
+        next = { ...next, photo }
+      }
+      await save('item', next)
+      console.log(`✔ Изменено: ${itemLine(next, byId, placeById)}`)
+    }
+    break
+  }
+
+  case 'delete-item': {
+    const item = findOne(await load<Item>('item'), rest[0], 'товар', itemText)
+    await deletePhoto(item.photo)
+    await save('item', item, true)
+    console.log(`✔ Удалено: ${item.name}`)
     break
   }
 
   case 'categories': {
     const { values } = args({ section: { type: 'string' } })
-    const [categories, places] = await Promise.all([load<Category>('category'), load<Place>('place')])
-    for (const section of SECTIONS) {
-      if (values.section && values.section !== section.id) continue
-      console.log(`\n${section.emoji} ${section.title} (${section.id})`)
-      for (const c of sectionCategories(categories, section.id)) {
-        const n = places.filter((p) => p.categoryIds.includes(c.id)).length
+    const [categories, places, items] = await Promise.all([load<Category>('category'), load<Place>('place'), load<Item>('item')])
+    const groups: { id: CategoryGroup; title: string }[] = [...SECTIONS.map((s) => ({ id: s.id, title: `${s.emoji} ${s.title}` })), { id: 'items', title: `🛒 ${groupTitle('items')}` }]
+    for (const group of groups) {
+      if (values.section && values.section !== group.id) continue
+      console.log(`\n${group.title} (${group.id})`)
+      const rows: { categoryIds: string[] }[] = group.id === 'items' ? items : places
+      for (const c of sectionCategories(categories, group.id)) {
+        const n = rows.filter((r) => r.categoryIds.includes(c.id)).length
         console.log(`  ${c.id.slice(0, 18).padEnd(18)}  ${c.emoji} ${c.name}${n ? `  — ${n}` : ''}`)
       }
     }
@@ -550,13 +826,13 @@ switch (command) {
 
   case 'add-category': {
     const { values } = args({ section: { type: 'string' }, name: { type: 'string' }, emoji: { type: 'string' } })
-    if (!values.section || !isSection(values.section)) fail(`--section: ${SECTIONS.map((s) => s.id).join(', ')}`)
+    if (!values.section || !isCategoryGroup(values.section)) fail(`--section: ${SECTIONS.map((s) => s.id).join(', ')}, items`)
     if (!values.name?.trim()) fail('Нужно --name')
     const categories = await load<Category>('category')
     if (categories.some((c) => c.section === values.section && normalize(c.name) === normalize(values.name!))) fail('Такая категория уже есть')
     const order = categories.reduce((max, c) => Math.max(max, c.order), 0) + 1
     await save('category', newEntity<Category>({ section: values.section, name: values.name.trim(), emoji: values.emoji?.trim() || '📍', order }))
-    console.log(`✔ Категория: ${values.emoji ?? '📍'} ${values.name} (${sectionInfo(values.section).title})`)
+    console.log(`✔ Категория: ${values.emoji ?? '📍'} ${values.name} (${groupTitle(values.section)})`)
     break
   }
 
@@ -571,12 +847,14 @@ switch (command) {
   }
 
   case 'delete-category': {
-    const [categories, places] = await Promise.all([load<Category>('category'), load<Place>('place')])
+    const [categories, places, items] = await Promise.all([load<Category>('category'), load<Place>('place'), load<Item>('item')])
     const category = findOne(categories, rest[0], 'категория', (c) => [c.name])
     const affected = places.filter((p) => p.categoryIds.includes(category.id))
     for (const p of affected) await save('place', { ...p, categoryIds: p.categoryIds.filter((id) => id !== category.id) })
+    const affectedItems = items.filter((i) => i.categoryIds.includes(category.id))
+    for (const i of affectedItems) await save('item', { ...i, categoryIds: i.categoryIds.filter((id) => id !== category.id) })
     await save('category', category, true)
-    console.log(`✔ Удалена категория ${category.name}; убрана у мест: ${affected.length}`)
+    console.log(`✔ Удалена категория ${category.name}; убрана у мест: ${affected.length}, у товаров: ${affectedItems.length}`)
     break
   }
 
@@ -716,7 +994,8 @@ switch (command) {
 
   default:
     fail(
-      'Команды: setup, places, show, add-place, edit-place, delete-place, import, categories, add-category, edit-category, delete-category, ' +
+      'Команды: setup, places, show, add-place, edit-place, delete-place, import, items, show-item, add-item, edit-item, delete-item, ' +
+        'categories, add-category, edit-category, delete-category, ' +
         'guides, show-guide, add-guide, edit-guide, delete-guide, inbox, inbox-add, inbox-done, members, invite, set-role, remove-member',
     )
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { Place } from '../db/types'
-import { DEFAULT_CATEGORIES, SECTIONS } from './catalog'
+import type { Item, Place } from '../db/types'
+import { DEFAULT_CATEGORIES, isCategoryGroup } from './catalog'
+import { blankItem, compareItems, filterItems, findDuplicateItem, itemCategoryCounts, searchItems } from './items'
 import { normalizeStationCode, stationBadge } from './lines'
 import { parseInline, parseMarkdown, plainExcerpt } from './markdown'
 import {
@@ -100,8 +101,47 @@ describe('каталог', () => {
   it('у стартовых категорий уникальные id и разделы из списка', () => {
     const ids = DEFAULT_CATEGORIES.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
-    const sections = new Set(SECTIONS.map((s) => s.id))
-    expect(DEFAULT_CATEGORIES.every((c) => sections.has(c.section))).toBe(true)
+    expect(DEFAULT_CATEGORIES.every((c) => isCategoryGroup(c.section))).toBe(true)
+    expect(DEFAULT_CATEGORIES.some((c) => c.section === 'items')).toBe(true)
+  })
+})
+
+describe('товары («Что купить»)', () => {
+  let k = 0
+  const item = (fields: Partial<Item>): Item => ({ ...blankItem(), id: `i${++k}`, updatedAt: 1, deleted: 0, dirty: 0, ...fields })
+  const serum = item({ name: 'CHPT.9 Pore Clear Serum', nameJa: 'チャプトナイン ポアクリアセラム', categoryIds: ['care'], where: 'Loft, Don Quijote' })
+  const knife = item({ name: 'Кухонный нож', categoryIds: ['kitchen'], where: 'Каппабаси', status: 'bought' })
+  const kyabejin = item({ name: 'Kyabejin', nameJa: 'キャベジンコーワα', categoryIds: ['drinks'], note: 'От проблем с желудком', status: 'note' })
+  const items = [knife, kyabejin, serum]
+
+  it('порядок: купить → на заметку → куплено', () => {
+    expect([...items].sort(compareItems).map((i) => i.name)).toEqual(['CHPT.9 Pore Clear Serum', 'Kyabejin', 'Кухонный нож'])
+  })
+
+  it('фильтр по категории и статусу', () => {
+    expect(filterItems(items, { category: null, status: 'all' })).toHaveLength(3)
+    expect(filterItems(items, { category: 'kitchen', status: 'all' }).map((i) => i.name)).toEqual(['Кухонный нож'])
+    expect(filterItems(items, { category: null, status: 'note' }).map((i) => i.name)).toEqual(['Kyabejin'])
+    expect(filterItems(items, { category: 'kitchen', status: 'want' })).toHaveLength(0)
+  })
+
+  it('счётчики категорий учитывают статус', () => {
+    const counts = itemCategoryCounts(items, { category: 'care', status: 'want' })
+    expect(counts.get('care')).toBe(1)
+    expect(counts.get('kitchen')).toBeUndefined()
+  })
+
+  it('поиск по японскому названию, месту покупки и заметке', () => {
+    expect(searchItems(items, 'ポアクリア').map((i) => i.id)).toEqual([serum.id])
+    expect(searchItems(items, 'каппабаси').map((i) => i.id)).toEqual([knife.id])
+    expect(searchItems(items, 'желуд')).toEqual([kyabejin])
+    expect(searchItems(items, '  ')).toEqual([])
+  })
+
+  it('дубли — по названию или японскому названию', () => {
+    expect(findDuplicateItem(items, { name: ' kyabejin ', nameJa: '' })).toBe(kyabejin)
+    expect(findDuplicateItem(items, { name: 'Другое имя', nameJa: 'チャプトナイン ポアクリアセラム' })).toBe(serum)
+    expect(findDuplicateItem(items, { name: 'Нож', nameJa: '' })).toBeUndefined()
   })
 })
 

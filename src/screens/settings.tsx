@@ -32,8 +32,9 @@ export function SettingsScreen() {
 
 function OfflineCard() {
   const places = useRows('places')
+  const items = useRows('items')
   const online = useOnline()
-  const photos = (places ?? []).flatMap((p) => (p.photo ? [p.photo] : []))
+  const photos = [...(places ?? []), ...(items ?? [])].flatMap((p) => (p.photo ? [p.photo] : []))
   const [cached, setCached] = useState<number | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -58,13 +59,17 @@ function OfflineCard() {
     <section class="panel">
       <h2 class="panel__title">Без интернета</h2>
       <p class="panel__text">
-        Места и гайды всегда хранятся на этом устройстве. Фото скачиваются, когда вы их открываете, — а эта кнопка скачает все сразу, например перед
+        Места, товары и гайды всегда хранятся на этом устройстве. Фото скачиваются, когда вы их открываете, — а эта кнопка скачает все сразу, например перед
         вылетом.
       </p>
       <dl class="facts">
         <div>
           <dt>Мест</dt>
           <dd class="num">{places?.length ?? '…'}</dd>
+        </div>
+        <div>
+          <dt>Товаров</dt>
+          <dd class="num">{items?.length ?? '…'}</dd>
         </div>
         <div>
           <dt>Фото скачано</dt>

@@ -52,12 +52,39 @@ export interface Place extends SyncMeta {
   createdAt: number
 }
 
-/** Категория внутри раздела (Рамен, Якинику…). Список редактируется. */
+/** Чьи категории: раздела мест или товаров («Что купить»). */
+export type CategoryGroup = SectionId | 'items'
+
+/** Категория внутри раздела (Рамен, Якинику…) или товаров (Уход, Напитки…). Список редактируется. */
 export interface Category extends SyncMeta {
-  section: SectionId
+  section: CategoryGroup
   name: string
   emoji: string
   order: number
+}
+
+/** «Купить» — в списке покупок, «на заметку» — справка (что это и от чего), «куплено». */
+export type ItemStatus = 'want' | 'note' | 'bought'
+
+/** Товар из «Что купить» (вкладка в «Шопинге»): что искать в аптеке, комбини, магазине. */
+export interface Item extends SyncMeta {
+  name: string
+  /** Название на упаковке по-японски — показать продавцу. */
+  nameJa: string
+  categoryIds: string[]
+  /** Что это и зачем. */
+  note: string
+  /** Где купить — текстом: «дрогери (Matsumoto Kiyoshi, Don Quijote)». */
+  where: string
+  /** Магазины из раздела «Шопинг», где это продаётся. */
+  shopIds: string[]
+  /** Цена как в источнике: «¥1,100». */
+  price: string
+  sourceUrls: string[]
+  /** Фото упаковки. */
+  photo: Photo | null
+  status: ItemStatus
+  createdAt: number
 }
 
 export type GuideTopic = 'transport' | 'money' | 'connection' | 'documents' | 'etiquette' | 'other'

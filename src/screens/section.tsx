@@ -9,7 +9,7 @@ import { buildHash, navigate } from '../lib/hooks'
 import { EmptyState } from '../ui/components'
 import { IconEdit, IconPlus, IconStar } from '../ui/icons'
 import { CategoriesSheet } from './categories-sheet'
-import { PlaceCard, PlatformSign } from './parts'
+import { PlaceCard, PlatformSign, ShopTabs } from './parts'
 
 const STATUS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'Все' },
@@ -47,6 +47,7 @@ export function SectionScreen({ section, params }: { section: SectionId; params:
   const { canEdit } = useApp()
   const places = useRows('places')
   const categories = useRows('categories')
+  const items = useRows('items')
   const [editing, setEditing] = useState(false)
   const info = sectionInfo(section)
   const filter = readFilter(params)
@@ -75,6 +76,8 @@ export function SectionScreen({ section, params }: { section: SectionId; params:
         color={info.color}
         meta={`${inSection.length} ${plural(inSection.length, 'место', 'места', 'мест')}`}
       />
+
+      {section === 'shop' && <ShopTabs current="shops" shops={inSection.length} items={items?.length ?? 0} />}
 
       <nav class="rail" aria-label="Категории" style={{ '--line': info.color }}>
         <div class="rail__scroll">
@@ -171,7 +174,7 @@ export function SectionScreen({ section, params }: { section: SectionId; params:
 }
 
 /** Запомнить, где был список, и вернуться туда после «Назад» из места. */
-function useListScroll(ready: boolean) {
+export function useListScroll(ready: boolean) {
   useEffect(() => {
     if (!ready) return
     const key = `jp:scroll:${location.hash}`

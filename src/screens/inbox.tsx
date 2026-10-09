@@ -96,6 +96,8 @@ function InboxRow({ item }: { item: InboxItem }) {
   const { db, canEdit } = useApp()
   const date = new Date(item.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
   const url = URL_RE.exec(item.text)?.[0]
+  // Черновик места или товара: ссылка — в источники, остальной текст — в заметку.
+  const draft = { source: url ?? null, note: url ? item.text.replace(url, '').trim() || null : item.text, inbox: item.id }
 
   return (
     <li class={`inbox-item${item.doneAt ? ' inbox-item--done' : ''}`}>
@@ -108,14 +110,16 @@ function InboxRow({ item }: { item: InboxItem }) {
       {canEdit && (
         <div class="inbox-item__actions">
           {!item.doneAt && (
-            <button
-              class="btn btn--small"
-              type="button"
-              onClick={() => navigate(buildHash('new', { source: url ?? null, note: url ? item.text.replace(url, '').trim() || null : item.text, inbox: item.id }))}
-            >
-              <IconPlus size={16} />
-              Сделать местом
-            </button>
+            <>
+              <button class="btn btn--small" type="button" onClick={() => navigate(buildHash('new', draft))}>
+                <IconPlus size={16} />
+                Место
+              </button>
+              <button class="btn btn--small" type="button" onClick={() => navigate(buildHash('new-item', draft))}>
+                <IconPlus size={16} />
+                Товар
+              </button>
+            </>
           )}
           <button
             class="icon-btn"

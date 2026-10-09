@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { AppContext, type AppContextValue } from './app-context'
 import { canEdit, isRole, setRole, type Role } from './data/access'
 import { createDb, type JapanDB } from './db/db'
-import type { Category, Guide, InboxItem, Place, SyncMeta } from './db/types'
+import type { Category, Guide, InboxItem, Item, Place, SyncMeta } from './db/types'
 import { DEFAULT_CATEGORIES } from './domain/catalog'
+import { blankItem } from './domain/items'
 import { blankPlace } from './domain/places'
 import { createSyncEngine } from './sync/engine'
 import type { Remote } from './sync/remote'
@@ -220,6 +221,17 @@ const GUIDES: Guide[] = [
   },
 ]
 
+function item(id: string, fields: Partial<Item> & Pick<Item, 'name'>): Item {
+  return { ...blankItem(), createdAt: 1, ...fields, id, ...meta }
+}
+
+const ITEMS: Item[] = [
+  item('demo-item-knife', { name: 'Кухонный нож сантоку', nameJa: '三徳包丁', categoryIds: ['cat-item-kitchen'], where: 'Каппабаси, Асакуса', note: 'Универсальный нож — мясо, рыба, овощи' }),
+  item('demo-item-matcha', { name: 'Матча для заваривания', nameJa: '抹茶', categoryIds: ['cat-item-food'], where: 'Киото, лавки у храмов', price: '¥1,500', note: 'Порошок высшего сорта, 30 г' }),
+  item('demo-item-sunscreen', { name: 'Солнцезащитный гель', nameJa: '日焼け止めジェル', categoryIds: ['cat-item-care'], where: 'дрогери', note: 'Лёгкий, без белых следов', status: 'bought' }),
+  item('demo-item-energy', { name: 'Энергетик из аптеки', nameJa: 'エナジードリンク', categoryIds: ['cat-item-drinks'], where: 'комбини, дрогери', note: 'Маленькая бутылочка, от усталости', status: 'note' }),
+]
+
 const INBOX: InboxItem[] = [
   { id: 'demo-in-1', text: 'https://www.instagram.com/reel/demo-ramen — рамен с трюфелем, где-то в Сибуе', createdAt: 1, doneAt: null, ...meta },
   { id: 'demo-in-2', text: 'Кафе с совами в Харадзюку — посмотреть', createdAt: 2, doneAt: null, ...meta },
@@ -231,6 +243,7 @@ async function seed(target: JapanDB) {
   await target.categories.bulkPut(categories as (Category & SyncMeta)[])
   await target.places.bulkPut(PLACES)
   await target.guides.bulkPut(GUIDES)
+  await target.items.bulkPut(ITEMS)
   await target.inbox.bulkPut(INBOX)
 }
 

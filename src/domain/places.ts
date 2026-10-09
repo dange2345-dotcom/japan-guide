@@ -1,4 +1,4 @@
-import type { Category, Place, SectionId } from '../db/types'
+import type { Category, CategoryGroup, Place, SectionId } from '../db/types'
 
 // Фильтр, поиск, сортировка и проверка дублей. Общие для приложения и scripts/japan.ts.
 
@@ -78,8 +78,8 @@ export function categoryCounts(places: Place[], section: SectionId, filter: Plac
   return counts
 }
 
-/** Категории раздела по порядку. */
-export function sectionCategories(categories: Category[], section: SectionId): Category[] {
+/** Категории раздела (или товаров) по порядку. */
+export function sectionCategories(categories: Category[], section: CategoryGroup): Category[] {
   return categories.filter((c) => c.section === section).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'ru'))
 }
 

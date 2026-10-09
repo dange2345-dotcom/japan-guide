@@ -2505,6 +2505,231 @@ a {
   text-align: right;
 }
 
+/* ===== «Что купить»: вкладки «Шопинга», список покупок, товар ===== */
+.segmented--tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.segmented--tabs .segmented__item {
+  gap: 7px;
+  min-height: 40px;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.segmented__count {
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segmented--thirds {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.item-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 76px;
+}
+
+.item-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-group__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.item-group__count {
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.item-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .item-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--board);
+  animation: rise 360ms var(--ease) both;
+}
+
+.item-row__main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 4px 8px 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.item-row__main > .result__thumb {
+  flex-shrink: 0;
+}
+
+.item-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.item-row__name {
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.item-row__note,
+.item-row__meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.item-row__note {
+  color: var(--ink-2);
+  font-size: 13.5px;
+}
+
+.item-row__meta {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+.item-row--bought .item-row__name {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.item-row--bought .photo {
+  filter: saturate(0.3) contrast(0.95);
+  opacity: 0.75;
+}
+
+/* Галочка «куплено» — крупная, под большой палец. */
+.item-check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--board);
+  color: transparent;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease),
+    border-color 160ms var(--ease),
+    color 160ms var(--ease),
+    transform 120ms var(--ease);
+}
+
+.item-check:active {
+  transform: scale(0.92);
+}
+
+.item-check--on {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--board);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item-check:hover:not(.item-check--on) {
+    border-color: var(--ink-2);
+    color: var(--ink-3);
+  }
+}
+
+/* Фото упаковки: целиком, без обрезки. */
+.place__photo--item {
+  aspect-ratio: 1 / 1;
+  max-height: 56vh;
+}
+
+/* Без фото — невысокая табличка, а не квадрат на пол-экрана. */
+.place__photo--item:has(.photo--empty) {
+  aspect-ratio: 16 / 9;
+}
+
+.place__photo--item > .photo:not(.photo--empty) {
+  object-fit: contain;
+  background: var(--board-2);
+}
+
+.tag--note {
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.rows__where {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rows__shop-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--line);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ja-board__photo {
+  display: block;
+  max-width: 100%;
+  max-height: 34vh;
+  margin: 0 auto 18px;
+  object-fit: contain;
+}
+
+.ja-board__name--item {
+  font-size: clamp(1.9rem, 8.5vw, 4rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

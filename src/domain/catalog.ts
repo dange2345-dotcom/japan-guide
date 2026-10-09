@@ -1,4 +1,4 @@
-import type { GuideTopic, SectionId } from '../db/types'
+import type { CategoryGroup, GuideTopic, ItemStatus, SectionId } from '../db/types'
 
 // Разделы, стартовые категории и темы гайдов. Общие для приложения и scripts/japan.ts.
 
@@ -35,8 +35,30 @@ export function isSection(value: unknown): value is SectionId {
   return SECTIONS.some((s) => s.id === value)
 }
 
+/** «Что купить» — вкладка «Шопинга»: товары, а не места. Линия та же (фиолетовая 買). */
+export const ITEMS_INFO = { title: 'Что купить', one: 'товар', section: 'shop' } as const
+
+export function isCategoryGroup(value: unknown): value is CategoryGroup {
+  return value === 'items' || isSection(value)
+}
+
+/** Название группы категорий: «Еда», «Что купить»… */
+export function groupTitle(group: CategoryGroup): string {
+  return group === 'items' ? ITEMS_INFO.title : sectionInfo(group).title
+}
+
+export const ITEM_STATUSES: readonly { id: ItemStatus; label: string }[] = [
+  { id: 'want', label: 'Купить' },
+  { id: 'note', label: 'На заметку' },
+  { id: 'bought', label: 'Куплено' },
+]
+
+export function isItemStatus(value: unknown): value is ItemStatus {
+  return value === 'want' || value === 'note' || value === 'bought'
+}
+
 /** Стартовый набор категорий. id детерминированные — повторная загрузка не плодит дублей. */
-export const DEFAULT_CATEGORIES: readonly { id: string; section: SectionId; name: string; emoji: string }[] = [
+export const DEFAULT_CATEGORIES: readonly { id: string; section: CategoryGroup; name: string; emoji: string }[] = [
   { id: 'cat-food-ramen', section: 'food', name: 'Рамен', emoji: '🍜' },
   { id: 'cat-food-sushi', section: 'food', name: 'Суши', emoji: '🍣' },
   { id: 'cat-food-yakiniku', section: 'food', name: 'Якинику', emoji: '🥩' },
@@ -63,6 +85,16 @@ export const DEFAULT_CATEGORIES: readonly { id: string; section: SectionId; name
   { id: 'cat-hotel-hotel', section: 'hotel', name: 'Отель', emoji: '🏨' },
   { id: 'cat-hotel-ryokan', section: 'hotel', name: 'Рёкан', emoji: '🏯' },
   { id: 'cat-hotel-capsule', section: 'hotel', name: 'Капсульный', emoji: '🛏️' },
+
+  { id: 'cat-item-care', section: 'items', name: 'Уход и косметика', emoji: '🧴' },
+  { id: 'cat-item-pharmacy', section: 'items', name: 'Аптека', emoji: '💊' },
+  { id: 'cat-item-drinks', section: 'items', name: 'Напитки', emoji: '🥤' },
+  { id: 'cat-item-food', section: 'items', name: 'Еда', emoji: '🍘' },
+  { id: 'cat-item-kitchen', section: 'items', name: 'Кухня', emoji: '🔪' },
+  { id: 'cat-item-home', section: 'items', name: 'Дом', emoji: '🏠' },
+  { id: 'cat-item-clothes', section: 'items', name: 'Одежда и обувь', emoji: '👟' },
+  { id: 'cat-item-tools', section: 'items', name: 'Инструменты', emoji: '🔧' },
+  { id: 'cat-item-tech', section: 'items', name: 'Электроника', emoji: '🔌' },
 ]
 
 export interface TopicInfo {

@@ -113,6 +113,27 @@ export function PlatformSign(props: { kanji: string; title: string; reading: str
   )
 }
 
+/** Переключатель внутри «Шопинга»: магазины (места) и «Что купить» (товары). */
+export function ShopTabs(props: { current: 'shops' | 'items'; shops: number; items: number }) {
+  const tabs = [
+    { id: 'shops', title: 'Магазины', href: buildHash('shop'), n: props.shops },
+    { id: 'items', title: 'Что купить', href: buildHash('items'), n: props.items },
+  ] as const
+  return (
+    <nav class="segmented segmented--tabs" aria-label="Шопинг">
+      {tabs.map((tab) => {
+        const on = props.current === tab.id
+        return (
+          <a href={tab.href} class={`segmented__item${on ? ' segmented__item--on' : ''}`} aria-current={on ? 'page' : undefined} onClick={(e) => on && e.preventDefault()}>
+            {tab.title}
+            {tab.n > 0 && <span class="segmented__count num">{tab.n}</span>}
+          </a>
+        )
+      })}
+    </nav>
+  )
+}
+
 /* ---------- Фото ---------- */
 
 /** Фото места; нет фото или не загрузилось — табличка с иероглифом раздела. */

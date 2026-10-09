@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { useRows } from '../data/use-data'
-import { sectionInfo } from '../domain/catalog'
+import { ITEMS_INFO, sectionInfo } from '../domain/catalog'
+import { searchItems } from '../domain/items'
 import { normalize, searchPlaces } from '../domain/places'
 import { plainExcerpt } from '../domain/markdown'
 import { buildHash, navigate } from '../lib/hooks'
@@ -12,6 +13,7 @@ export function SearchScreen({ params }: { params: URLSearchParams }) {
   const places = useRows('places')
   const categories = useRows('categories')
   const guides = useRows('guides')
+  const items = useRows('items')
   const input = useRef<HTMLInputElement>(null)
   const query = params.get('q') ?? ''
 
@@ -19,6 +21,7 @@ export function SearchScreen({ params }: { params: URLSearchParams }) {
 
   const found = places && categories ? searchPlaces(places, query, categories) : []
   const words = normalize(query).split(' ').filter(Boolean)
+  const foundItems = items && categories ? searchItems(items, query, categories) : []
   const foundGuides = words.length && guides ? guides.filter((g) => words.every((w) => normalize(`${g.title} ${g.body}`).includes(w))) : []
   const byId = new Map((categories ?? []).map((c) => [c.id, c]))
 
@@ -31,13 +34,13 @@ export function SearchScreen({ params }: { params: URLSearchParams }) {
           class="search__input"
           type="search"
           enterKeyHint="search"
-          placeholder="Название, станция, категория, по-японски…"
+          placeholder="Название, станция, товар, по-японски…"
           value={query}
           onInput={(e) => navigate(buildHash('search', { q: e.currentTarget.value }), true)}
         />
       </form>
 
-      {words.length > 0 && found.length === 0 && foundGuides.length === 0 && <p class="hint">Ничего не нашлось по «{query}».</p>}
+      {words.length > 0 && found.length === 0 && foundItems.length === 0 && foundGuides.length === 0 && <p class="hint">Ничего не нашлось по «{query}».</p>}
 
       {found.length > 0 && (
         <ul class="results">
@@ -69,6 +72,36 @@ export function SearchScreen({ params }: { params: URLSearchParams }) {
             )
           })}
         </ul>
+      )}
+
+      {foundItems.length > 0 && (
+        <section class="guides__topic">
+          <h2 class="guides__title">{ITEMS_INFO.title}</h2>
+          <ul class="results">
+            {foundItems.map((i) => (
+              <li key={i.id}>
+                <a class="result" href={buildHash(`item/${i.id}`)} style={{ '--line': sectionInfo('shop').color }}>
+                  <span class="result__thumb">
+                    <PlacePhoto photo={i.photo} section="shop" />
+                  </span>
+                  <span class="result__text">
+                    <span class="result__name">{i.name}</span>
+                    <span class="result__meta">
+                      <span class="result__line">{ITEMS_INFO.title}</span>
+                      {i.note && ` · ${i.note}`}
+                    </span>
+                    {i.nameJa && (
+                      <span class="result__meta" lang="ja">
+                        {i.nameJa}
+                      </span>
+                    )}
+                  </span>
+                  <IconChevronRight size={18} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {foundGuides.length > 0 && (

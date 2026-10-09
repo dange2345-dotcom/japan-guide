@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Category, Guide, InboxItem, MetaRow, Place, SyncMeta } from './types'
+import type { Category, Guide, InboxItem, Item, MetaRow, Place, SyncMeta } from './types'
 
 /** Синхронизируемые таблицы и тип их записей. */
 export interface SyncedTables {
@@ -7,6 +7,7 @@ export interface SyncedTables {
   categories: Category
   guides: Guide
   inbox: InboxItem
+  items: Item
 }
 
 export type JapanDB = Dexie & { [K in keyof SyncedTables]: EntityTable<SyncedTables[K], 'id'> } & {
@@ -19,6 +20,7 @@ export const SYNCED_TABLES = [
   { table: 'categories', kind: 'category' },
   { table: 'guides', kind: 'guide' },
   { table: 'inbox', kind: 'inbox' },
+  { table: 'items', kind: 'item' },
 ] as const satisfies readonly { table: keyof SyncedTables; kind: string }[]
 
 export type SyncedTableName = (typeof SYNCED_TABLES)[number]['table']
@@ -32,6 +34,8 @@ export function createDb(name = 'japan'): JapanDB {
     inbox: 'id, dirty',
     meta: 'key',
   })
+  // v2: товары («Что купить»).
+  db.version(2).stores({ items: 'id, dirty' })
   return db
 }
 

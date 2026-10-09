@@ -275,7 +275,7 @@ function PlaceView(props: {
   )
 }
 
-function sourceLabel(url: string): string {
+export function sourceLabel(url: string): string {
   if (/instagram\.com/i.test(url)) return 'Instagram'
   if (/tiktok\.com/i.test(url)) return 'TikTok'
   if (/youtu\.?be/i.test(url)) return 'YouTube'

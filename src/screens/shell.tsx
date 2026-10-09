@@ -7,6 +7,8 @@ import { IconInbox, IconSearch, IconSettings } from '../ui/icons'
 import { GuideFormScreen } from './guide-form'
 import { GuideScreen, GuidesScreen } from './guides'
 import { InboxScreen } from './inbox'
+import { ItemFormScreen } from './item-form'
+import { ItemScreen, ItemsScreen } from './items'
 import { LineBadge } from './parts'
 import { PlaceScreen } from './place'
 import { PlaceFormScreen } from './place-form'
@@ -24,6 +26,7 @@ function activeTab(path: string, params: URLSearchParams, placeSection: SectionI
   const [head] = path.split('/')
   if (isSection(head) || head === 'guides') return head
   if (head === 'guide' || head === 'new-guide' || head === 'edit-guide') return 'guides'
+  if (head === 'items' || head === 'item' || head === 'new-item' || head === 'edit-item') return 'shop'
   if (head === 'place' || head === 'edit') return placeSection ?? params.get('from')
   if (head === 'new') return params.get('section') ?? 'food'
   return null
@@ -50,6 +53,10 @@ export function Shell() {
   else if (head === 'place' && id) screen = <PlaceScreen id={id} params={params} />
   else if (head === 'new') screen = <PlaceFormScreen params={params} />
   else if (head === 'edit' && id) screen = <PlaceFormScreen placeId={id} params={params} />
+  else if (head === 'items') screen = <ItemsScreen params={params} />
+  else if (head === 'item' && id) screen = <ItemScreen id={id} params={params} />
+  else if (head === 'new-item') screen = <ItemFormScreen params={params} />
+  else if (head === 'edit-item' && id) screen = <ItemFormScreen itemId={id} params={params} />
   else if (head === 'guides') screen = <GuidesScreen params={params} />
   else if (head === 'guide' && id) screen = <GuideScreen id={id} />
   else if (head === 'new-guide') screen = <GuideFormScreen params={params} />
@@ -95,7 +102,7 @@ export function Shell() {
         </div>
       </nav>
 
-      <main class={`main${head === 'place' ? ' main--place' : ''}`} key={head === 'place' ? 'place' : path}>
+      <main class={`main${head === 'place' || head === 'item' ? ' main--place' : ''}`} key={head === 'place' || head === 'item' ? head : path}>
         {screen}
       </main>
     </div>
