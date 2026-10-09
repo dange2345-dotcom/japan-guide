@@ -6,12 +6,37 @@ import { useRows } from '../data/use-data'
 import { humanizeError } from '../lib/errors'
 import { useSyncState } from '../lib/hooks'
 import { cachePhotos, countCachedPhotos } from '../lib/photos'
+import { checkForUpdate } from '../lib/updates'
 import { plural } from '../lib/plural'
 import { useOnline } from '../lib/use-online'
 import { ErrorText, Field, syncLabel } from '../ui/components'
 import { IconCopy, IconDownload, IconOut, IconSync } from '../ui/icons'
 import { formatBuildTime } from './gates'
 import { PageHead } from './parts'
+
+/** Версия и ручная проверка обновления (сами обновления проверяются при каждом возврате в приложение). */
+function VersionLine() {
+  const online = useOnline()
+  const [status, setStatus] = useState<string | null>(null)
+
+  async function check() {
+    setStatus('Проверяю…')
+    const found = await checkForUpdate()
+    setStatus(found ? 'Есть новая версия — сейчас перезапущу' : 'Это последняя версия')
+  }
+
+  return (
+    <p class="hint">
+      Версия от {formatBuildTime()}
+      {' · '}
+      {status ?? (
+        <button class="link-btn" type="button" disabled={!online} onClick={() => void check()}>
+          Проверить обновление
+        </button>
+      )}
+    </p>
+  )
+}
 
 export function SettingsScreen() {
   const { email, role, client } = useApp()
@@ -377,7 +402,7 @@ function SyncCard() {
           Синхронизировать сейчас
         </button>
       </div>
-      <p class="hint">Версия от {formatBuildTime()}</p>
+      <VersionLine />
     </section>
   )
 }

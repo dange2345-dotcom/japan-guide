@@ -11,7 +11,9 @@ export default defineConfig({
   plugins: [
     preact(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Новую версию ставит src/lib/updates.ts: проверяет при возврате в приложение, не перезагружает посреди формы.
+      registerType: 'prompt',
+      injectRegister: false,
       // theme-color задан в index.html отдельно для светлой и тёмной темы — плагин свой не добавляет.
       pwaAssets: { config: true, injectThemeColor: false },
       manifest: {

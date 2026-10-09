@@ -2505,6 +2505,23 @@ a {
   text-align: right;
 }
 
+/* Кнопка, похожая на ссылку (в подписях). */
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ===== «Что купить»: вкладки «Шопинга», список покупок, товар ===== */
 .segmented--tabs {
   display: grid;
